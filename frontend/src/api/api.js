@@ -73,7 +73,16 @@ export const authAPI = {
     const response = await api.get('users/');
     return response.data;
   },
+  getProfile: async () => {
+    const response = await api.get('profile/');
+    return response.data;
+  },
+  updateProfile: async (data) => {
+    const response = await api.put('profile/', data);
+    return response.data;
+  },
 };
+
 
 export const projectAPI = {
   getAll: async () => {
@@ -102,6 +111,10 @@ export const projectAPI = {
   },
   updateMembers: async (id, memberIds) => {
     const response = await api.post(`projects/${id}/manage_members/`, { member_ids: memberIds });
+    return response.data;
+  },
+  updateColumns: async (id, columns) => {
+    const response = await api.post(`projects/${id}/manage_columns/`, { columns });
     return response.data;
   },
 };
@@ -187,12 +200,20 @@ export const spaceAPI = {
     const response = await api.get('spaces/');
     return response.data;
   },
+  getOne: async (id) => {
+    const response = await api.get(`spaces/${id}/`);
+    return response.data;
+  },
   create: async (data) => {
     const response = await api.post('spaces/', data);
     return response.data;
   },
   delete: async (id) => {
     const response = await api.delete(`spaces/${id}/`);
+    return response.data;
+  },
+  updateColumns: async (id, columns) => {
+    const response = await api.post(`spaces/${id}/manage_columns/`, { columns });
     return response.data;
   },
 };

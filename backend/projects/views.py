@@ -58,6 +58,50 @@ class ProjectViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(project)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @action(detail=True, methods=['post'])
+    def manage_columns(self, request, pk=None):
+        project = self.get_object()
+        
+        # Security validation check: Only lead or superuser can manage columns
+        if request.user != project.lead and not request.user.is_superuser:
+            raise PermissionDenied("Only the Project Lead or a Superuser can manage columns.")
+
+        columns_data = request.data.get('columns', [])
+        if not isinstance(columns_data, list):
+            return Response({'error': 'columns must be a list.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        from .models import ProjectStatus
+        from issues.models import Issue
+
+        existing_ids = [c.get('id') for c in columns_data if c.get('id')]
+        
+        # Delete columns that are not in the payload
+        statuses_to_delete = project.columns.exclude(id__in=existing_ids)
+        delete_codes = list(statuses_to_delete.values_list('code', flat=True))
+        statuses_to_delete.delete()
+
+        # Update issues whose status was deleted to fallback to default 'OP'
+        if delete_codes:
+            Issue.objects.filter(project=project, status__in=delete_codes).update(status='OP')
+
+        # Create or update columns in payload
+        for col in columns_data:
+            col_id = col.get('id')
+            name = col.get('name', '').strip()
+            code = col.get('code', '').strip().upper()
+            order = col.get('order', 0)
+
+            if not name or not code:
+                continue
+
+            if col_id:
+                ProjectStatus.objects.filter(id=col_id, project=project).update(name=name, code=code, order=order)
+            else:
+                ProjectStatus.objects.get_or_create(project=project, code=code, defaults={'name': name, 'order': order})
+
+        serializer = self.get_serializer(project)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 class InvitationViewSet(viewsets.ModelViewSet):
     serializer_class = InvitationSerializer
@@ -240,6 +284,53 @@ class SpaceViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("You are not a member of this project, so you cannot create a Space for it.")
             
         serializer.save(created_by=user)
+
+    @action(detail=True, methods=['post'])
+    def manage_columns(self, request, pk=None):
+        space = self.get_object()
+        project = space.project
+
+        # Security check: Only project lead or superuser can manage columns
+        is_allowed = request.user.is_superuser or (project and request.user == project.lead) or (not project and request.user == space.created_by)
+        if not is_allowed:
+            raise PermissionDenied("You do not have permission to manage columns for this Space.")
+
+        columns_data = request.data.get('columns', [])
+        if not isinstance(columns_data, list):
+            return Response({'error': 'columns must be a list.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        from .models import ProjectStatus
+        from issues.models import Issue
+
+        existing_ids = [c.get('id') for c in columns_data if c.get('id')]
+        
+        # Delete columns not in payload
+        statuses_to_delete = space.columns.exclude(id__in=existing_ids)
+        delete_codes = list(statuses_to_delete.values_list('code', flat=True))
+        statuses_to_delete.delete()
+
+        # Fallback deleted status issues to default 'OP'
+        if delete_codes:
+            Issue.objects.filter(space=space, status__in=delete_codes).update(status='OP')
+
+        # Create/Update columns
+        for col in columns_data:
+            col_id = col.get('id')
+            name = col.get('name', '').strip()
+            code = col.get('code', '').strip().upper()
+            order = col.get('order', 0)
+
+            if not name or not code:
+                continue
+
+            if col_id:
+                ProjectStatus.objects.filter(id=col_id, space=space).update(name=name, code=code, order=order)
+            else:
+                ProjectStatus.objects.get_or_create(space=space, code=code, defaults={'name': name, 'order': order, 'project': project})
+
+        from .serializers import ProjectStatusSerializer
+        updated_cols = space.columns.all()
+        return Response(ProjectStatusSerializer(updated_cols, many=True).data, status=status.HTTP_200_OK)
 
 
 class PageViewSet(viewsets.ModelViewSet):

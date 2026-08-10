@@ -42,6 +42,8 @@ urlpatterns = [
     path('api/auth/logout/', views.logout_api, name='api_logout'),
     path('api/auth/me/', views.me_api, name='api_me'),
     path('api/users/', views.users_list_api, name='api_users'),
+    path('api/profile/', views.profile_api, name='api_profile'),
+
 
     # REST Framework ViewSets API endpoints
     path('api/', include(router.urls)),

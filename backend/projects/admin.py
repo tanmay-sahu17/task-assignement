@@ -1,11 +1,22 @@
 from django.contrib import admin
-from .models import Project, Invitation, JoinRequest
+from .models import Project, Invitation, JoinRequest, ProjectStatus
+
+class ProjectStatusInline(admin.TabularInline):
+    model = ProjectStatus
+    extra = 1
 
 @admin.register(Project)
 class ProjectAdmin(admin.ModelAdmin):
     list_display = ('name', 'key', 'lead', 'created_at')
     search_fields = ('name', 'key')
     filter_horizontal = ('members',)
+    inlines = [ProjectStatusInline]
+
+@admin.register(ProjectStatus)
+class ProjectStatusAdmin(admin.ModelAdmin):
+    list_display = ('project', 'name', 'code', 'order')
+    list_filter = ('project',)
+    search_fields = ('name', 'code')
 
 @admin.register(Invitation)
 class InvitationAdmin(admin.ModelAdmin):
@@ -33,3 +44,12 @@ class PageAdmin(admin.ModelAdmin):
     list_display = ('title', 'space', 'created_by', 'updated_at')
     search_fields = ('title',)
     list_filter = ('updated_at',)
+
+
+from .models import UserProfile
+
+@admin.register(UserProfile)
+class UserProfileAdmin(admin.ModelAdmin):
+    list_display = ('user', 'job_title', 'department', 'location')
+    search_fields = ('user__username', 'user__email', 'job_title')
+

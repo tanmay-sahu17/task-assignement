@@ -224,7 +224,8 @@ export default function Projects({ onNavigateToProject, currentUser }) {
             {projects.map((project) => (
               <div
                 key={project.id}
-                className="bg-[#131316] border border-[#202024] rounded-xl p-6 shadow-sm hover:border-[#2e2e36] transition-all flex flex-col justify-between"
+                onClick={() => onNavigateToProject(project.id)}
+                className="bg-[#131316] border border-[#202024] rounded-xl p-6 shadow-sm hover:border-[#2e2e36] transition-all flex flex-col justify-between cursor-pointer group"
               >
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
@@ -235,7 +236,7 @@ export default function Projects({ onNavigateToProject, currentUser }) {
                       {project.key}
                     </span>
                   </div>
-                  <h3 className="text-lg font-bold text-white truncate">{project.name}</h3>
+                  <h3 className="text-lg font-bold text-white truncate group-hover:text-indigo-400 transition-colors">{project.name}</h3>
                   <p className="text-sm text-[#71717a] line-clamp-2 h-10">
                     {project.description || 'No description provided.'}
                   </p>
@@ -250,12 +251,11 @@ export default function Projects({ onNavigateToProject, currentUser }) {
                       Lead: <span className="font-medium text-[#a1a1aa]">{project.lead_details?.username}</span>
                     </span>
                   </div>
-                  <button
-                    onClick={() => onNavigateToProject(project.id)}
-                    className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
+                  <span
+                    className="text-xs font-semibold text-indigo-400 group-hover:text-indigo-300 transition-colors"
                   >
                     View Board &rarr;
-                  </button>
+                  </span>
                 </div>
               </div>
             ))}

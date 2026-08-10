@@ -17,6 +17,7 @@ class IssueViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(project__members=user)
             
         project_id = self.request.query_params.get('project')
+        space_id = self.request.query_params.get('space')
         assignee_id = self.request.query_params.get('assignee')
         status_param = self.request.query_params.get('status')
         type_param = self.request.query_params.get('type')
@@ -24,6 +25,8 @@ class IssueViewSet(viewsets.ModelViewSet):
 
         if project_id:
             queryset = queryset.filter(project_id=project_id)
+        if space_id:
+            queryset = queryset.filter(space_id=space_id)
         if assignee_id:
             queryset = queryset.filter(assignee_id=assignee_id)
         if status_param:
@@ -36,4 +39,8 @@ class IssueViewSet(viewsets.ModelViewSet):
         return queryset
 
     def perform_create(self, serializer):
-        serializer.save(reporter=self.request.user)
+        space = serializer.validated_data.get('space')
+        if space:
+            serializer.save(reporter=self.request.user, project=space.project)
+        else:
+            serializer.save(reporter=self.request.user)
