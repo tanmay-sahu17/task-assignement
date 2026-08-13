@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { projectAPI, authAPI, invitationAPI, joinRequestAPI } from '../api/api';
 import { Plus, X, FolderKanban, Briefcase, Loader2, Users, Send, Check, AlertCircle, Copy } from 'lucide-react';
+import Loader from './Loader';
 
 export default function Projects({ onNavigateToProject, currentUser }) {
   const [projects, setProjects] = useState([]);
@@ -132,11 +133,7 @@ export default function Projects({ onNavigateToProject, currentUser }) {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
-      </div>
-    );
+    return <Loader text="Loading projects workspace..." fullScreen={false} />;
   }
 
   const pendingRequestsToApprove = joinRequests.filter(r => 

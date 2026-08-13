@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Project, Invitation, JoinRequest, Space, Page, ProjectStatus
+from .models import Project, Invitation, JoinRequest, Space, Page, ProjectStatus, Sprint
 
 class UserSerializer(serializers.ModelSerializer):
     avatar_color = serializers.SerializerMethodField()
@@ -62,5 +62,14 @@ class SpaceSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Space
-        fields = ('id', 'name', 'key', 'project', 'project_details', 'created_by', 'created_by_details', 'pages', 'statuses', 'created_at')
+        fields = ('id', 'name', 'key', 'description', 'project', 'project_details', 'created_by', 'created_by_details', 'pages', 'statuses', 'created_at')
         read_only_fields = ('created_by',)
+
+
+class SprintSerializer(serializers.ModelSerializer):
+    issue_count = serializers.IntegerField(read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+
+    class Meta:
+        model = Sprint
+        fields = ('id', 'space', 'name', 'goal', 'status', 'status_display', 'start_date', 'end_date', 'order', 'issue_count', 'created_at')

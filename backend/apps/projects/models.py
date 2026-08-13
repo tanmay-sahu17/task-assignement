@@ -55,6 +55,7 @@ class JoinRequest(models.Model):
 class Space(models.Model):
     name = models.CharField(max_length=100)
     key = models.CharField(max_length=10, unique=True)
+    description = models.TextField(blank=True, default='')
     project = models.ForeignKey(Project, on_delete=models.CASCADE, null=True, blank=True, related_name='spaces')
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_spaces')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -136,4 +137,24 @@ def create_default_space_statuses(sender, instance, created, **kwargs):
         ProjectStatus.objects.create(space=instance, project=instance.project, name="To Do", code="OP", order=0)
         ProjectStatus.objects.create(space=instance, project=instance.project, name="In Progress", code="IN", order=1)
         ProjectStatus.objects.create(space=instance, project=instance.project, name="Done", code="CL", order=2)
+
+
+class Sprint(models.Model):
+    class Status(models.TextChoices):
+        PLANNING = 'PL', 'Planning'
+        ACTIVE   = 'AC', 'Active'
+        COMPLETED = 'CO', 'Completed'
+
+    space = models.ForeignKey(Space, on_delete=models.CASCADE, related_name='sprints')
+    name = models.CharField(max_length=100)
+    goal = models.TextField(blank=True, default='')
+    status = models.CharField(max_length=2, choices=Status.choices, default=Status.PLANNING)
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    order = models.PositiveIntegerField(default=0)
+
+    def __str__(self):
+        return f"{self.name} - {self.space.name} ({self.get_status_display()})"
+
 

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import Issue
-from projects.serializers import UserSerializer, ProjectSerializer, SpaceSerializer
+from projects.serializers import UserSerializer, ProjectSerializer, SpaceSerializer, SprintSerializer
 
 class EpicDetailsSerializer(serializers.ModelSerializer):
     class Meta:
@@ -27,6 +27,7 @@ class IssueSerializer(serializers.ModelSerializer):
     assignee_details = UserSerializer(source='assignee', read_only=True)
     project_details = ProjectSerializer(source='project', read_only=True)
     space_details = SpaceSerializer(source='space', read_only=True)
+    sprint_details = SprintSerializer(source='sprint', read_only=True)
 
     type_display = serializers.CharField(source='get_type_display', read_only=True)
     status_display = serializers.SerializerMethodField(read_only=True)
@@ -38,7 +39,7 @@ class IssueSerializer(serializers.ModelSerializer):
     class Meta:
         model = Issue
         fields = (
-            'issue_no', 'project', 'project_details', 'space', 'space_details',
+            'issue_no', 'project', 'project_details', 'space', 'space_details', 'sprint', 'sprint_details',
             'reporter', 'reporter_details', 'assignee', 'assignee_details', 
             'title', 'details', 'type', 'type_display', 'status', 'status_display', 
             'priority', 'priority_display', 'label', 'created_at', 'epic', 

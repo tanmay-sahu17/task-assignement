@@ -5,7 +5,12 @@ import sys
 
 
 def main():
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'jiraClone.settings')
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'jira_clone.settings')
+    
+    # Add 'apps' subdirectory to path
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    sys.path.insert(0, os.path.join(base_dir, 'apps'))
+
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:

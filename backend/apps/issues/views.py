@@ -18,6 +18,7 @@ class IssueViewSet(viewsets.ModelViewSet):
             
         project_id = self.request.query_params.get('project')
         space_id = self.request.query_params.get('space')
+        sprint_param = self.request.query_params.get('sprint')
         assignee_id = self.request.query_params.get('assignee')
         status_param = self.request.query_params.get('status')
         type_param = self.request.query_params.get('type')
@@ -27,6 +28,11 @@ class IssueViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(project_id=project_id)
         if space_id:
             queryset = queryset.filter(space_id=space_id)
+        if sprint_param:
+            if sprint_param == 'none':
+                queryset = queryset.filter(sprint__isnull=True)
+            else:
+                queryset = queryset.filter(sprint_id=sprint_param)
         if assignee_id:
             queryset = queryset.filter(assignee_id=assignee_id)
         if status_param:

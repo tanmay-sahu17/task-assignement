@@ -31,7 +31,7 @@ class JoinRequestAdmin(admin.ModelAdmin):
     search_fields = ('user__username', 'project__name')
 
 
-from .models import Space, Page
+from .models import Space, Page, Sprint
 
 @admin.register(Space)
 class SpaceAdmin(admin.ModelAdmin):
@@ -44,6 +44,13 @@ class PageAdmin(admin.ModelAdmin):
     list_display = ('title', 'space', 'created_by', 'updated_at')
     search_fields = ('title',)
     list_filter = ('updated_at',)
+
+
+@admin.register(Sprint)
+class SprintAdmin(admin.ModelAdmin):
+    list_display = ('name', 'space', 'status', 'start_date', 'end_date', 'order')
+    list_filter = ('status', 'space')
+    search_fields = ('name',)
 
 
 from .models import UserProfile

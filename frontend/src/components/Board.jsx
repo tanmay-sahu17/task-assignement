@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { projectAPI, issueAPI, commentAPI, authAPI } from '../api/api';
-import { Plus, X, Loader2, ArrowLeft, Search, MessageSquare, Trash2, Calendar, User, Users, FolderKanban } from 'lucide-react';
+import { projectAPI, issueAPI, commentAPI, authAPI, spaceAPI, pageAPI, sprintAPI } from '../api/api';
+import { Plus, X, Loader2, ArrowLeft, Search, MessageSquare, Trash2, Calendar, User, Users, FolderKanban, Save, FileText } from 'lucide-react';
+import Loader from './Loader';
 
 const EpicIcon = ({ className = "w-4 h-4" }) => (
   <svg 
@@ -8,17 +9,27 @@ const EpicIcon = ({ className = "w-4 h-4" }) => (
     fill="currentColor"
     fillOpacity="0.2"
     stroke="currentColor" 
-    strokeWidth="2.5" 
+    strokeWidth="2" 
     strokeLinecap="round" 
     strokeLinejoin="round" 
-    className={`${className} text-[#c084fc]`}
+    className={className}
   >
-    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+    <path d="M12 2L2 7l10 5 10-5-10-5z" />
+    <path d="M2 17l10 5 10-5" />
+    <path d="M2 12l10 5 10-5" />
   </svg>
 );
 
-export default function Board({ projectId, onBack, currentUser, initialSelectedIssueNo, onClearInitialSelectedIssue }) {
-  const [project, setProject] = useState(null);
+export default function Board({ spaceId, onBack, currentUser, initialSelectedIssueNo, onClearInitialSelectedIssue }) {
+  const [space, setSpace] = useState(null);
+  const project = space ? {
+    ...space.project_details,
+    name: space.name,
+    key: space.key,
+    description: space.description,
+    statuses: space.statuses || [],
+    columns: space.statuses || [],
+  } : null;
   const [issues, setIssues] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -54,6 +65,93 @@ export default function Board({ projectId, onBack, currentUser, initialSelectedI
   const [quickTaskTitle, setQuickTaskTitle] = useState({});
   const [quickTaskType, setQuickTaskType] = useState({});
 
+  // Docs wiki pages states
+  const [pages, setPages] = useState([]);
+  const [selectedPage, setSelectedPage] = useState(null);
+  const [pageSearch, setPageSearch] = useState('');
+  const [editorTitle, setEditorTitle] = useState('');
+  const [editorContent, setEditorContent] = useState('');
+  const [editorSaving, setEditorSaving] = useState(false);
+  const [editorMessage, setEditorMessage] = useState('');
+
+  // Fetch space pages when Docs tab is selected
+  useEffect(() => {
+    if (spaceId && activeTab === 'docs') {
+      setPages([]);
+      setSelectedPage(null);
+      pageAPI.getBySpace(spaceId)
+        .then(data => {
+          setPages(data);
+          if (data.length > 0) {
+            setSelectedPage(data[0]);
+            setEditorTitle(data[0].title);
+            setEditorContent(data[0].content || '');
+          }
+        })
+        .catch(err => console.error('Failed to load space pages', err));
+    }
+  }, [spaceId, activeTab]);
+
+  const handleSelectPage = (page) => {
+    setSelectedPage(page);
+    setEditorTitle(page.title);
+    setEditorContent(page.content || '');
+    setEditorMessage('');
+  };
+
+  const handleCreatePage = async () => {
+    if (!spaceId) return;
+    try {
+      const newPage = await pageAPI.create({
+        space: spaceId,
+        title: 'Untitled Page',
+        content: ''
+      });
+      setPages([newPage, ...pages]);
+      handleSelectPage(newPage);
+    } catch (err) {
+      alert('Failed to create Page.');
+    }
+  };
+
+  const handleSavePage = async () => {
+    if (!selectedPage) return;
+    setEditorSaving(true);
+    setEditorMessage('');
+    try {
+      const updated = await pageAPI.update(selectedPage.id, {
+        title: editorTitle,
+        content: editorContent
+      });
+      setPages(pages.map(p => p.id === updated.id ? updated : p));
+      setSelectedPage(updated);
+      setEditorMessage('Document saved successfully.');
+      setTimeout(() => setEditorMessage(''), 3000);
+    } catch (err) {
+      setEditorMessage('Failed to save document changes.');
+    } finally {
+      setEditorSaving(false);
+    }
+  };
+
+  const handleDeletePage = async (pageId) => {
+    if (!window.confirm('Delete this page permanently?')) return;
+    try {
+      await pageAPI.delete(pageId);
+      const remaining = pages.filter(p => p.id !== pageId);
+      setPages(remaining);
+      if (selectedPage?.id === pageId) {
+        if (remaining.length > 0) {
+          handleSelectPage(remaining[0]);
+        } else {
+          setSelectedPage(null);
+        }
+      }
+    } catch (err) {
+      alert('Failed to delete page.');
+    }
+  };
+
   // Members modal form states
   const [selectedMemberIds, setSelectedMemberIds] = useState([]);
   const [membersSubmitLoading, setMembersSubmitLoading] = useState(false);
@@ -76,16 +174,49 @@ export default function Board({ projectId, onBack, currentUser, initialSelectedI
   const [localDetails, setLocalDetails] = useState('');
   const [labelText, setLabelText] = useState('');
 
+  // Sprint management states
+  const [sprints, setSprints] = useState([]);
+  const [activeSprintId, setActiveSprintId] = useState(null);
+  const [isSprintModalOpen, setIsSprintModalOpen] = useState(false);
+  const [newSprintName, setNewSprintName] = useState('');
+  const [newSprintGoal, setNewSprintGoal] = useState('');
+  const [newSprintStartDate, setNewSprintStartDate] = useState('');
+  const [newSprintEndDate, setNewSprintEndDate] = useState('');
+  const [newSprint, setNewSprint] = useState('');
+  
+  // Sprint completion modal states
+  const [completeSprintModalOpen, setCompleteSprintModalOpen] = useState(false);
+  const [sprintToComplete, setSprintToComplete] = useState(null);
+  const [moveToSprintId, setMoveToSprintId] = useState('backlog');
+
   const loadData = async () => {
+    setLoading(true);
     try {
-      const [projData, issueData, userData] = await Promise.all([
-        projectAPI.getOne(projectId),
-        issueAPI.getAll({ project: projectId }),
+      const [spaceData, sprintsData, userData] = await Promise.all([
+        spaceAPI.getOne(spaceId),
+        sprintAPI.getAll({ space: spaceId }),
         authAPI.getUsers(),
       ]);
-      setProject(projData);
-      setIssues(issueData);
+      setSpace(spaceData);
+      setSprints(sprintsData);
       setUsers(userData);
+
+      const activeSprint = sprintsData.find(s => s.status === 'AC');
+      const activeSprintIdVal = activeSprint ? activeSprint.id : null;
+      setActiveSprintId(activeSprintIdVal);
+
+      let issueData = [];
+      if (activeTab === 'board') {
+        if (activeSprintIdVal) {
+          issueData = await issueAPI.getAll({ space: spaceId, sprint: activeSprintIdVal });
+        } else {
+          issueData = [];
+        }
+      } else {
+        // Backlog/Timeline/Calendar/Docs get all issues
+        issueData = await issueAPI.getAll({ space: spaceId });
+      }
+      setIssues(issueData);
     } catch (err) {
       console.error('Failed to load board details', err);
     } finally {
@@ -95,7 +226,66 @@ export default function Board({ projectId, onBack, currentUser, initialSelectedI
 
   useEffect(() => {
     loadData();
-  }, [projectId]);
+  }, [spaceId, activeTab]);
+
+  const handleCreateSprint = async (e) => {
+    e.preventDefault();
+    if (!newSprintName.trim()) return;
+    try {
+      const data = {
+        space: spaceId,
+        name: newSprintName.trim(),
+        goal: newSprintGoal.trim(),
+        start_date: newSprintStartDate || null,
+        end_date: newSprintEndDate || null,
+        status: 'PL',
+        order: sprints.length
+      };
+      await sprintAPI.create(data);
+      setIsSprintModalOpen(false);
+      setNewSprintName('');
+      setNewSprintGoal('');
+      setNewSprintStartDate('');
+      setNewSprintEndDate('');
+      loadData();
+    } catch (err) {
+      console.error("Failed to create sprint", err);
+      alert("Failed to create sprint.");
+    }
+  };
+
+  const handleStartSprint = async (sprintId) => {
+    try {
+      await sprintAPI.start(sprintId);
+      loadData();
+    } catch (err) {
+      console.error("Failed to start sprint", err);
+      alert(err.response?.data?.error || "Failed to start sprint.");
+    }
+  };
+
+  const handleCompleteSprint = async (e) => {
+    e.preventDefault();
+    if (!sprintToComplete) return;
+    try {
+      await sprintAPI.complete(sprintToComplete.id, moveToSprintId);
+      setCompleteSprintModalOpen(false);
+      setSprintToComplete(null);
+      loadData();
+    } catch (err) {
+      console.error("Failed to complete sprint", err);
+      alert("Failed to complete sprint.");
+    }
+  };
+
+  const handleMoveIssueSprint = async (issueNo, targetSprintId) => {
+    try {
+      await issueAPI.update(issueNo, { sprint: targetSprintId === 'backlog' ? null : targetSprintId });
+      loadData();
+    } catch (err) {
+      console.error("Failed to move issue sprint", err);
+    }
+  };
 
   // Load comments when an issue is selected
   useEffect(() => {
@@ -155,7 +345,7 @@ export default function Board({ projectId, onBack, currentUser, initialSelectedI
 
     try {
       await issueAPI.update(issueNo, { status: targetStatus });
-      const freshIssues = await issueAPI.getAll({ project: projectId });
+      const freshIssues = await issueAPI.getAll({ space: spaceId });
       setIssues(freshIssues);
     } catch (err) {
       console.error('Failed to update issue status', err);
@@ -173,7 +363,7 @@ export default function Board({ projectId, onBack, currentUser, initialSelectedI
     setCreateLoading(true);
     try {
       const data = {
-        project: projectId,
+        space: spaceId,
         title: newTitle,
         type: newType,
         status: newStatus,
@@ -182,6 +372,7 @@ export default function Board({ projectId, onBack, currentUser, initialSelectedI
         assignee: newAssignee || null,
         label: newLabel,
         epic: newEpic || null,
+        sprint: newSprint || null,
       };
       await issueAPI.create(data);
       setIsCreateModalOpen(false);
@@ -190,6 +381,7 @@ export default function Board({ projectId, onBack, currentUser, initialSelectedI
       setNewAssignee('');
       setNewLabel('');
       setNewEpic('');
+      setNewSprint('');
       loadData();
     } catch (err) {
       setCreateError(err.response?.data?.assignee?.[0] || 'Failed to create issue.');
@@ -254,11 +446,7 @@ export default function Board({ projectId, onBack, currentUser, initialSelectedI
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
-      </div>
-    );
+    return <Loader text="Switching space & loading board..." fullScreen={true} />;
   }
 
   const getPriorityBadgeStyle = (priority) => {
@@ -288,7 +476,7 @@ export default function Board({ projectId, onBack, currentUser, initialSelectedI
       setIsCreatingEpic(true);
       try {
         await issueAPI.create({
-          project: projectId,
+          space: spaceId,
           title: createEpicTitle,
           type: 'EP',
           status: 'OP',
@@ -315,7 +503,7 @@ export default function Board({ projectId, onBack, currentUser, initialSelectedI
       if (!title?.trim()) return;
       try {
         await issueAPI.create({
-          project: projectId,
+          space: spaceId,
           title,
           type,
           epic: epicId,
@@ -765,7 +953,7 @@ export default function Board({ projectId, onBack, currentUser, initialSelectedI
     setSettingsLoading(true);
     setSettingsError('');
     try {
-      await projectAPI.update(projectId, {
+      await spaceAPI.update(spaceId, {
         name: settingsName,
         key: settingsKey.toUpperCase(),
         description: settingsDescription
@@ -777,7 +965,7 @@ export default function Board({ projectId, onBack, currentUser, initialSelectedI
         code: c.code.trim().toUpperCase(),
         order: c.order
       }));
-      await projectAPI.updateColumns(projectId, formattedCols);
+      await spaceAPI.updateColumns(spaceId, formattedCols);
 
       await loadData();
       setIsSettingsModalOpen(false);
@@ -816,6 +1004,367 @@ export default function Board({ projectId, onBack, currentUser, initialSelectedI
         { title: 'In Progress', status: 'IN', color: 'bg-blue-50/50 border-blue-100' },
         { title: 'Done / Closed', status: 'CL', color: 'bg-green-50/30 border-green-100' },
       ];
+
+  const renderBacklogView = () => {
+    const backlogIssues = issues.filter(i => !i.sprint && i.type !== 'EP');
+
+    return (
+      <div className="space-y-6 animate-fadeIn text-[#f3f4f6]">
+        {/* Sprints header controls */}
+        <div className="flex items-center justify-between bg-[#131316] border border-[#202024] p-4 rounded-xl shadow-sm">
+          <div>
+            <h3 className="text-sm font-bold text-white uppercase tracking-wider">Sprint Planning</h3>
+            <p className="text-xs text-[#71717a] mt-1">Create sprints and prioritize items from the backlog.</p>
+          </div>
+          <button
+            onClick={() => setIsSprintModalOpen(true)}
+            className="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs rounded-lg transition-colors cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5 mr-1.5" />
+            Create Sprint
+          </button>
+        </div>
+
+        {/* Sprints sections */}
+        <div className="space-y-4">
+          {sprints.map((spr) => {
+            const sprIssues = issues.filter(i => i.sprint === spr.id && i.type !== 'EP');
+            const isCompleted = spr.status === 'CO';
+            const isActive = spr.status === 'AC';
+            const isPlanning = spr.status === 'PL';
+
+            return (
+              <div key={spr.id} className="bg-[#0c0c0e] border border-[#202024] rounded-xl overflow-hidden shadow-sm">
+                {/* Sprint Header */}
+                <div className="px-5 py-4 border-b border-[#202024] flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0 bg-[#131316]/55">
+                  <div className="flex items-center space-x-3">
+                    <span className="w-7 h-7 rounded bg-indigo-950/30 text-indigo-400 border border-indigo-900/30 flex items-center justify-center font-bold text-xs">
+                      SP
+                    </span>
+                    <div>
+                      <h4 className="text-xs font-bold text-white flex items-center space-x-2">
+                        <span>{spr.name}</span>
+                        {isActive && (
+                          <span className="text-[10px] text-green-400 bg-green-950/30 border border-green-900/40 px-2 py-0.5 rounded font-extrabold animate-pulse uppercase tracking-wider">
+                            Active
+                          </span>
+                        )}
+                        {isCompleted && (
+                          <span className="text-[10px] text-gray-400 bg-gray-900 border border-[#202024] px-2 py-0.5 rounded font-extrabold uppercase tracking-wider">
+                            Completed
+                          </span>
+                        )}
+                        {isPlanning && (
+                          <span className="text-[10px] text-indigo-400 bg-indigo-950/30 border border-indigo-900/40 px-2 py-0.5 rounded font-extrabold uppercase tracking-wider">
+                            Planning
+                          </span>
+                        )}
+                      </h4>
+                      {spr.goal && <p className="text-[10px] text-[#71717a] mt-1 italic">Goal: {spr.goal}</p>}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-3 text-xs">
+                    {(spr.start_date || spr.end_date) && (
+                      <span className="text-[10px] text-[#71717a] font-medium">
+                        {spr.start_date || '?'} to {spr.end_date || '?'}
+                      </span>
+                    )}
+
+                    <span className="text-[10px] bg-[#1c1c22] border border-[#2b2b32] text-[#a1a1aa] px-2 py-0.5 rounded-md font-bold">
+                      {sprIssues.length} issues
+                    </span>
+
+                    {isPlanning && (
+                      <button
+                        onClick={() => handleStartSprint(spr.id)}
+                        className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white font-bold text-[10px] rounded transition-colors uppercase tracking-wider cursor-pointer"
+                      >
+                        Start Sprint
+                      </button>
+                    )}
+                    {isActive && (
+                      <button
+                        onClick={() => {
+                          setSprintToComplete(spr);
+                          setMoveToSprintId('backlog');
+                          setCompleteSprintModalOpen(true);
+                        }}
+                        className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px] rounded transition-colors uppercase tracking-wider cursor-pointer"
+                      >
+                        Complete Sprint
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Sprint Issues List */}
+                <div 
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={async (e) => {
+                    e.preventDefault();
+                    const issueNo = e.dataTransfer.getData('text/plain');
+                    if (!issueNo) return;
+                    await handleMoveIssueSprint(issueNo, spr.id);
+                  }}
+                  className="divide-y divide-[#202024] p-2 bg-[#050507]/20 min-h-[60px]"
+                >
+                  {sprIssues.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-[#52525b] italic">
+                      No issues in this sprint. Use dropdown to move issues here.
+                    </div>
+                  ) : (
+                    sprIssues.map((issue) => renderBacklogIssueRow(issue))
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Backlog Section */}
+        <div className="bg-[#0c0c0e] border border-[#202024] rounded-xl overflow-hidden shadow-sm">
+          <div className="px-5 py-4 border-b border-[#202024] flex items-center justify-between bg-[#131316]/55">
+            <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center space-x-2">
+              <span>Backlog</span>
+              <span className="text-[10px] bg-[#1c1c22] border border-[#2b2b32] text-[#a1a1aa] px-2.5 py-0.5 rounded-md font-bold">
+                {backlogIssues.length} issues
+              </span>
+            </h4>
+          </div>
+          <div 
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={async (e) => {
+              e.preventDefault();
+              const issueNo = e.dataTransfer.getData('text/plain');
+              if (!issueNo) return;
+              await handleMoveIssueSprint(issueNo, 'backlog');
+            }}
+            className="divide-y divide-[#202024] p-2 bg-[#050507]/20 min-h-[80px]"
+          >
+            {backlogIssues.length === 0 ? (
+              <div className="p-6 text-center text-xs text-[#52525b] italic">
+                Backlog is empty.
+              </div>
+            ) : (
+              backlogIssues.map((issue) => renderBacklogIssueRow(issue))
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderBacklogIssueRow = (issue) => {
+    let displayStatus = issue.status_display || 'Open';
+    const statusObj = project?.statuses?.find(s => s.code === issue.status);
+    if (statusObj) displayStatus = statusObj.name;
+
+    const priorityColors = {
+      'LO': 'text-gray-400 bg-gray-900/30 border-gray-800',
+      'ME': 'text-blue-400 bg-blue-950/30 border-blue-900/40',
+      'HI': 'text-orange-400 bg-orange-950/30 border-orange-900/40',
+      'CR': 'text-red-400 bg-red-950/30 border-red-900/40 font-extrabold',
+    };
+    const priorityLabels = { 'LO': 'Low', 'ME': 'Medium', 'HI': 'High', 'CR': 'Critical' };
+
+    const typeBadges = {
+      'BU': { text: 'Bug', color: 'text-red-400 bg-red-950/20 border-red-900/40' },
+      'ST': { text: 'Story', color: 'text-green-400 bg-green-950/20 border-green-900/40' },
+      'TA': { text: 'Task', color: 'text-blue-400 bg-blue-950/20 border-blue-900/40' },
+      'EP': { text: 'Epic', color: 'text-purple-400 bg-purple-950/20 border-purple-900/40 font-bold' },
+    };
+    const typeObj = typeBadges[issue.type] || { text: 'Task', color: 'text-blue-400' };
+
+    return (
+      <div 
+        key={issue.issue_no}
+        draggable
+        onDragStart={(e) => handleDragStart(e, issue)}
+        className="flex items-center justify-between p-3 hover:bg-[#131316]/50 transition-colors cursor-grab active:cursor-grabbing"
+      >
+        <div className="flex items-center space-x-3 min-w-0 flex-1">
+          <span className={`text-[9px] px-2 py-0.5 rounded border uppercase shrink-0 font-medium ${typeObj.color}`}>
+            {typeObj.text}
+          </span>
+          <span className="text-xs text-gray-500 font-mono shrink-0">#{issue.issue_no}</span>
+          <span 
+            onClick={() => setSelectedIssue(issue)}
+            className="text-xs text-[#e4e4e7] hover:text-indigo-400 transition-colors truncate cursor-pointer font-medium hover:underline"
+          >
+            {issue.title}
+          </span>
+        </div>
+
+        <div className="flex items-center space-x-3 shrink-0 ml-4">
+          <span className={`text-[9px] px-2 py-0.5 rounded border uppercase font-medium ${priorityColors[issue.priority] || 'text-gray-400'}`}>
+            {priorityLabels[issue.priority] || 'Medium'}
+          </span>
+
+          <span className="text-[10px] px-2 py-0.5 bg-[#18181c] border border-[#2b2b32] text-[#a1a1aa] rounded-md font-semibold font-mono">
+            {displayStatus}
+          </span>
+
+          <div 
+            className="w-5 h-5 rounded-full text-white flex items-center justify-center text-[8px] font-extrabold shrink-0 border border-white/5"
+            style={{ backgroundColor: issue.assignee_details?.avatar_color || '#2b2b35' }}
+            title={`Assignee: ${issue.assignee_details?.username || 'Unassigned'}`}
+          >
+            {(issue.assignee_details?.username?.[0] || 'U').toUpperCase()}
+          </div>
+
+          <select
+            value={issue.sprint || 'backlog'}
+            onChange={(e) => handleMoveIssueSprint(issue.issue_no, e.target.value)}
+            className="px-2 py-1 bg-[#0d0d0f] border border-[#202024] rounded text-[10px] text-[#a1a1aa] focus:outline-none cursor-pointer"
+          >
+            <option value="backlog">Move to Backlog</option>
+            {sprints.filter(s => s.status !== 'CO').map(s => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+    );
+  };
+
+  const renderDocsView = () => {
+    const filteredPages = pages.filter(p => 
+      p.title.toLowerCase().includes(pageSearch.toLowerCase()) || 
+      p.content?.toLowerCase().includes(pageSearch.toLowerCase())
+    );
+
+    return (
+      <div className="flex h-[calc(100vh-16rem)] bg-[#09090b] border border-[#202024] rounded-2xl shadow-xl overflow-hidden text-[#f3f4f6] animate-fadeIn">
+        {/* PAGES LIST PANEL */}
+        <div className="w-72 bg-[#09090b] border-r border-[#202024] flex flex-col justify-between shrink-0">
+          <div className="p-4 space-y-4 flex-1 flex flex-col min-h-0">
+            <div className="flex items-center justify-between shrink-0">
+              <h4 className="text-[10px] font-bold text-[#71717a] uppercase tracking-wider">Pages ({filteredPages.length})</h4>
+              <button
+                onClick={handleCreatePage}
+                className="p-1 hover:bg-[#18181c] border border-[#202024] rounded text-indigo-400 hover:text-indigo-300 transition-colors focus:outline-none cursor-pointer flex items-center space-x-1 text-[10px] px-2"
+              >
+                <Plus className="w-3 h-3" />
+                <span>New Page</span>
+              </button>
+            </div>
+
+            {/* Page search */}
+            <div className="relative shrink-0">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-2.5 text-gray-500">
+                <Search className="w-3.5 h-3.5" />
+              </span>
+              <input
+                type="text"
+                placeholder="Search pages..."
+                value={pageSearch}
+                onChange={(e) => setPageSearch(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 bg-[#050507] border border-[#202024] text-xs text-white rounded-lg focus:outline-none"
+              />
+            </div>
+
+            {/* Pages List */}
+            <div className="space-y-1 overflow-y-auto flex-1 pr-1">
+              {filteredPages.length === 0 ? (
+                <p className="text-[11px] text-[#52525b] italic p-2 text-center">No pages match search.</p>
+              ) : (
+                filteredPages.map(p => {
+                  const isSelected = selectedPage?.id === p.id;
+                  return (
+                    <div
+                      key={p.id}
+                      onClick={() => handleSelectPage(p)}
+                      className={`group flex items-center justify-between px-3 py-2 rounded-lg text-xs cursor-pointer transition-all ${
+                        isSelected 
+                          ? 'bg-[#18181c] border border-[#2b2b32] text-white font-semibold' 
+                          : 'text-[#a1a1aa] bg-transparent border border-transparent hover:bg-[#131316] hover:text-white'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-2 truncate">
+                        <FileText className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-indigo-400' : 'text-gray-500'}`} />
+                        <span className="truncate">{p.title}</span>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeletePage(p.id);
+                        }}
+                        className="p-0.5 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity focus:outline-none"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* DOCUMENT EDITOR */}
+        <div className="flex-1 bg-[#050507] flex flex-col min-h-0">
+          {selectedPage ? (
+            <div className="flex flex-col h-full">
+              {/* Top header bar */}
+              <div className="px-6 py-3.5 border-b border-[#202024] flex items-center justify-between shrink-0 bg-[#0c0c0e]">
+                <div className="flex items-center space-x-2 text-[10px] text-[#71717a]">
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>Created on {new Date(selectedPage.created_at).toLocaleDateString()}</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  {editorMessage && (
+                    <span className={`text-[10px] font-semibold animate-pulse ${
+                      editorMessage.includes('Failed') ? 'text-red-400' : 'text-green-400'
+                    }`}>
+                      {editorMessage}
+                    </span>
+                  )}
+                  <button
+                    onClick={handleSavePage}
+                    disabled={editorSaving}
+                    className="inline-flex items-center px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-semibold text-xs rounded-lg transition-colors cursor-pointer"
+                  >
+                    {editorSaving ? (
+                      <Loader2 className="w-3 h-3 animate-spin mr-1.5" />
+                    ) : (
+                      <Save className="w-3 h-3 mr-1.5" />
+                    )}
+                    Save changes
+                  </button>
+                </div>
+              </div>
+
+              {/* Textarea fields */}
+              <div className="flex-1 p-6 space-y-4 overflow-y-auto flex flex-col min-h-0">
+                <input
+                  type="text"
+                  placeholder="Document Title"
+                  value={editorTitle}
+                  onChange={(e) => setEditorTitle(e.target.value)}
+                  className="w-full bg-transparent border-0 text-xl font-bold text-white focus:outline-none focus:ring-0 shrink-0 placeholder-gray-700 font-sans"
+                />
+                <textarea
+                  placeholder="Write your document content here (supports plain text or markdown info)..."
+                  value={editorContent}
+                  onChange={(e) => setEditorContent(e.target.value)}
+                  className="w-full flex-1 bg-transparent border-0 text-sm text-[#e4e4e7] focus:outline-none focus:ring-0 resize-none font-mono placeholder-gray-800 leading-relaxed"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-[#71717a]">
+              <FileText className="w-12 h-12 mb-3 opacity-20" />
+              <h4 className="text-sm font-bold text-[#e4e4e7]">No page selected</h4>
+              <p className="text-xs max-w-xs mt-1">Select a document page from the list or create a new page to write notes, wikis, and guidelines.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6 animate-fadeIn text-[#f3f4f6]">
@@ -876,6 +1425,16 @@ export default function Board({ projectId, onBack, currentUser, initialSelectedI
           <span>Board</span>
         </button>
         <button
+          onClick={() => setActiveTab('backlog')}
+          className={`px-6 py-3 text-sm font-semibold border-b-2 transition-colors cursor-pointer flex items-center space-x-2 ${
+            activeTab === 'backlog'
+              ? 'border-indigo-500 text-white font-bold'
+              : 'border-transparent text-gray-400 hover:text-white'
+          }`}
+        >
+          <span>Backlog</span>
+        </button>
+        <button
           onClick={() => setActiveTab('timeline')}
           className={`px-6 py-3 text-sm font-semibold border-b-2 transition-colors cursor-pointer flex items-center space-x-2 ${
             activeTab === 'timeline'
@@ -894,6 +1453,16 @@ export default function Board({ projectId, onBack, currentUser, initialSelectedI
           }`}
         >
           <span>Calendar</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('docs')}
+          className={`px-6 py-3 text-sm font-semibold border-b-2 transition-colors cursor-pointer flex items-center space-x-2 ${
+            activeTab === 'docs'
+              ? 'border-indigo-500 text-white font-bold'
+              : 'border-transparent text-gray-400 hover:text-white'
+          }`}
+        >
+          <span>Docs</span>
         </button>
       </div>
 
@@ -999,107 +1568,122 @@ export default function Board({ projectId, onBack, currentUser, initialSelectedI
       </div>
 
       {/* Kanban Board Grid */}
-      <div className="overflow-x-auto pb-4">
-        <div 
-          className="grid gap-6 min-w-[900px]" 
-          style={{ gridTemplateColumns: `repeat(${boardColumns.length}, minmax(300px, 1fr))` }}
-        >
-          {boardColumns.map((column) => {
-            const colIssues = getIssuesByStatus(column.status);
-          return (
-            <div
-              key={column.status}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => handleDrop(e, column.status)}
-              className="border border-[#202024] rounded-xl bg-[#0d0d0f] shadow-sm flex flex-col h-[600px] min-h-[300px] transition-colors"
-            >
-              {/* Column Header */}
-              <div className="p-4 border-b border-[#202024] flex items-center justify-between bg-[#131316] rounded-t-xl">
-                <h3 className="font-bold text-[#e4e4e7] text-sm">{column.title}</h3>
-                <span className="px-2 py-0.5 bg-[#1c1c1f] text-[#a1a1aa] border border-[#282830] text-xs font-semibold rounded-full">
-                  {colIssues.length}
-                </span>
-              </div>
-
-              {/* Cards List */}
-              <div className="p-3 space-y-3 overflow-y-auto flex-1 bg-[#09090b]">
-                {colIssues.length === 0 ? (
-                  <div className="h-24 border border-dashed border-[#202024] hover:border-[#2b2b30] rounded-lg flex items-center justify-center text-xs text-[#52525b]">
-                    Drag issues here
-                  </div>
-                ) : (
-                  colIssues.map((issue) => (
-                    <div
-                      key={issue.issue_no}
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, issue)}
-                      onClick={() => setSelectedIssue(issue)}
-                      className="bg-[#131316] border border-[#202024] rounded-xl p-4 shadow-sm hover:border-[#2e2e36] cursor-pointer transition-all space-y-3"
-                    >
-                      {/* Badge / Key */}
-                      <div className="flex items-center justify-between">
-                        <span className={`px-2 py-0.5 text-[9px] font-bold rounded ${getTypeStyle(issue.type)}`}>
-                          {issue.type_display}
-                        </span>
-                        <span className="text-[10px] font-semibold text-[#52525b]">
-                          #{issue.issue_no}
-                        </span>
-                      </div>
-
-                      {/* Title */}
-                      <h4 className="text-sm font-semibold text-[#e4e4e7] leading-tight">
-                        {issue.title}
-                      </h4>
-                      {issue.epic_details && (
-                        <div className="mt-1.5 flex items-center">
-                          <span className="px-1.5 py-0.5 text-[9px] font-bold bg-purple-950/40 text-purple-400 border border-purple-900/50 rounded flex items-center">
-                            <EpicIcon className="w-3 h-3 mr-1 shrink-0" />
-                            {issue.epic_details.title}
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Details Footer */}
-                      <div className="flex items-center justify-between pt-2 border-t border-[#1c1c20] flex-wrap gap-2">
-                        <div className="flex items-center space-x-1.5">
-                          <span className={`px-2 py-0.5 text-[9px] font-semibold border rounded ${getPriorityBadgeStyle(issue.priority)}`}>
-                            {issue.priority_display}
-                          </span>
-                          {issue.label && issue.label.split(',').map((lbl, idx) => {
-                            const trimmed = lbl.trim();
-                            if (!trimmed) return null;
-                            return (
-                              <span key={idx} className="px-2 py-0.5 text-[9px] font-semibold border border-indigo-900/50 bg-[#151520] text-indigo-400 rounded truncate max-w-[100px]">
-                                {trimmed}
-                              </span>
-                            );
-                          })}
-                        </div>
-                        <div className="flex items-center space-x-1.5 text-xs text-[#71717a]">
-                          <div 
-                            className="w-4 h-4 rounded-full text-white flex items-center justify-center text-[8px] font-extrabold shrink-0 border border-white/5"
-                            style={{ backgroundColor: issue.assignee_details?.avatar_color || '#2b2b35' }}
-                          >
-                            {(issue.assignee_details?.username?.[0] || 'U').toUpperCase()}
-                          </div>
-                          <span className="font-medium truncate max-w-[80px]">
-                            {issue.assignee_details?.username || 'Unassigned'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          );
-        })}
+      {!activeSprintId ? (
+        <div className="flex flex-col items-center justify-center p-12 bg-[#0c0c0e]/30 border border-[#202024] rounded-2xl shadow-sm text-center">
+          <FolderKanban className="w-12 h-12 text-[#52525b] mb-4 opacity-55 animate-pulse" />
+          <h3 className="text-sm font-bold text-white uppercase tracking-wider">No Active Sprint</h3>
+          <p className="text-xs text-[#71717a] max-w-sm mt-1.5 leading-relaxed">
+            There is no active sprint in this Space. Please go to the **Backlog** tab to plan and start your sprint!
+          </p>
+          <button
+            onClick={() => setActiveTab('backlog')}
+            className="mt-5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs rounded-lg transition-colors cursor-pointer shadow-sm"
+          >
+            Go to Backlog
+          </button>
         </div>
-      </div>
-        </>
+      ) : (
+        <div className="overflow-x-auto pb-4">
+          <div 
+            className="grid gap-6 min-w-[900px]" 
+            style={{ gridTemplateColumns: `repeat(${boardColumns.length}, minmax(300px, 1fr))` }}
+          >
+            {boardColumns.map((column) => {
+              const colIssues = getIssuesByStatus(column.status);
+              return (
+                <div
+                  key={column.status}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => handleDrop(e, column.status)}
+                  className="border border-[#202024] rounded-xl bg-[#0d0d0f] shadow-sm flex flex-col h-[600px] min-h-[300px] transition-colors"
+                >
+                  {/* Column Header */}
+                  <div className="p-4 border-b border-[#202024] flex items-center justify-between bg-[#131316] rounded-t-xl">
+                    <h3 className="font-bold text-[#e4e4e7] text-sm">{column.title}</h3>
+                    <span className="px-2 py-0.5 bg-[#1c1c1f] text-[#a1a1aa] border border-[#282830] text-xs font-semibold rounded-full">
+                      {colIssues.length}
+                    </span>
+                  </div>
+
+                  {/* Cards List */}
+                  <div className="p-3 space-y-3 overflow-y-auto flex-1 bg-[#09090b]">
+                    {colIssues.length === 0 ? (
+                      <div className="h-24 border border-dashed border-[#202024] hover:border-[#2b2b30] rounded-lg flex items-center justify-center text-xs text-[#52525b]">
+                        Drag issues here
+                      </div>
+                    ) : (
+                      colIssues.map((issue) => (
+                        <div
+                          key={issue.issue_no}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, issue)}
+                          onClick={() => setSelectedIssue(issue)}
+                          className="bg-[#131316] border border-[#202024] rounded-xl p-4 shadow-sm hover:border-[#2e2e36] cursor-pointer transition-all space-y-3"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className={`px-2 py-0.5 text-[9px] font-bold rounded ${getTypeStyle(issue.type)}`}>
+                              {issue.type_display}
+                            </span>
+                            <span className="text-[10px] font-semibold text-[#52525b]">
+                              #{issue.issue_no}
+                            </span>
+                          </div>
+
+                          <h4 className="text-sm font-semibold text-[#e4e4e7] leading-tight">
+                            {issue.title}
+                          </h4>
+                          {issue.epic_details && (
+                            <div className="mt-1.5 flex items-center">
+                              <span className="px-1.5 py-0.5 text-[9px] font-bold bg-purple-950/40 text-purple-400 border border-purple-900/50 rounded flex items-center">
+                                <EpicIcon className="w-3 h-3 mr-1 shrink-0" />
+                                {issue.epic_details.title}
+                              </span>
+                            </div>
+                          )}
+
+                          <div className="flex items-center justify-between pt-2 border-t border-[#1c1c20] flex-wrap gap-2">
+                            <div className="flex items-center space-x-1.5">
+                              <span className={`px-2 py-0.5 text-[9px] font-semibold border rounded ${getPriorityBadgeStyle(issue.priority)}`}>
+                                {issue.priority_display}
+                              </span>
+                              {issue.label && issue.label.split(',').map((lbl, idx) => {
+                                const trimmed = lbl.trim();
+                                if (!trimmed) return null;
+                                return (
+                                  <span key={idx} className="px-2 py-0.5 text-[9px] font-semibold border border-indigo-900/50 bg-[#151520] text-indigo-400 rounded truncate max-w-[100px]">
+                                    {trimmed}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                            <div className="flex items-center space-x-1.5 text-xs text-[#71717a]">
+                              <div 
+                                className="w-4 h-4 rounded-full text-white flex items-center justify-center text-[8px] font-extrabold shrink-0 border border-white/5"
+                                style={{ backgroundColor: issue.assignee_details?.avatar_color || '#2b2b35' }}
+                              >
+                                {(issue.assignee_details?.username?.[0] || 'U').toUpperCase()}
+                              </div>
+                              <span className="font-medium truncate max-w-[80px]">
+                                {issue.assignee_details?.username || 'Unassigned'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       )}
+      </>
+      )}
+      {activeTab === 'backlog' && renderBacklogView()}
       {activeTab === 'timeline' && renderTimelineView()}
       {activeTab === 'calendar' && renderCalendarView()}
+      {activeTab === 'docs' && renderDocsView()}
 
       {/* CREATE ISSUE MODAL */}
       {isCreateModalOpen && (
@@ -1179,6 +1763,24 @@ export default function Board({ projectId, onBack, currentUser, initialSelectedI
                   {issues.filter(i => i.type === 'EP').map(ep => (
                     <option key={ep.issue_no} value={ep.issue_no}>
                       {ep.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#71717a] uppercase tracking-wider mb-1.5">
+                  Sprint
+                </label>
+                <select
+                  value={newSprint}
+                  onChange={(e) => setNewSprint(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#131316] border border-[#202024] text-white rounded-lg text-sm focus:outline-none"
+                >
+                  <option value="">Backlog (No Sprint)</option>
+                  {sprints.filter(s => s.status !== 'CO').map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.status_display})
                     </option>
                   ))}
                 </select>
@@ -1382,7 +1984,7 @@ export default function Board({ projectId, onBack, currentUser, initialSelectedI
                       if (!title?.trim()) return;
                       try {
                         await issueAPI.create({
-                          project: projectId,
+                          space: spaceId,
                           title,
                           type,
                           epic: selectedIssue.issue_no,
@@ -1391,7 +1993,7 @@ export default function Board({ projectId, onBack, currentUser, initialSelectedI
                           details: 'Created from Epic Detail view.'
                         });
                         setQuickTaskTitle(prev => ({ ...prev, [selectedIssue.issue_no]: '' }));
-                        const freshIssues = await issueAPI.getAll({ project: projectId });
+                        const freshIssues = await issueAPI.getAll({ space: spaceId });
                         setIssues(freshIssues);
                         const updatedEpic = freshIssues.find(i => i.issue_no === selectedIssue.issue_no);
                         if (updatedEpic) setSelectedIssue(updatedEpic);
@@ -1624,6 +2226,25 @@ export default function Board({ projectId, onBack, currentUser, initialSelectedI
                     </select>
                   </div>
                 )}
+
+                {/* Sprint Selection */}
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] font-bold text-[#71717a] uppercase tracking-wider">
+                    Sprint
+                  </label>
+                  <select
+                    value={selectedIssue.sprint || ''}
+                    onChange={(e) => handleIssueUpdateField('sprint', e.target.value || null)}
+                    className="w-full px-2.5 py-1.5 bg-[#131316] border border-[#202024] rounded-md text-xs text-[#e4e4e7] focus:outline-none cursor-pointer"
+                  >
+                    <option value="">Backlog (No Sprint)</option>
+                    {sprints.filter(s => s.status !== 'CO').map(s => (
+                      <option key={s.id} value={s.id}>
+                        {s.name} ({s.status_display})
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
                 {/* Date configurations for timeline scheduling */}
                 <div className="space-y-1.5">
@@ -1950,6 +2571,143 @@ export default function Board({ projectId, onBack, currentUser, initialSelectedI
                   ) : (
                     <span>Save Changes</span>
                   )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* CREATE SPRINT MODAL */}
+      {isSprintModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
+          <div className="w-full max-w-md bg-[#0d0d0f] rounded-xl shadow-lg border border-[#202024] overflow-hidden animate-slideUp text-[#f3f4f6]">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#202024]">
+              <h3 className="text-lg font-bold text-white">Create Sprint</h3>
+              <button onClick={() => setIsSprintModalOpen(false)} className="text-gray-500 hover:text-gray-300 focus:outline-none cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateSprint} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-[#71717a] uppercase tracking-wider mb-1.5">
+                  Sprint Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newSprintName}
+                  onChange={(e) => setNewSprintName(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#131316] border border-[#202024] rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                  placeholder="e.g. Sprint 1"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#71717a] uppercase tracking-wider mb-1.5">
+                  Goal
+                </label>
+                <textarea
+                  value={newSprintGoal}
+                  onChange={(e) => setNewSprintGoal(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#131316] border border-[#202024] rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all resize-none h-20"
+                  placeholder="What is the team committing to achieve?"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-[#71717a] uppercase tracking-wider mb-1.5">
+                    Start Date
+                  </label>
+                  <input
+                    type="date"
+                    value={newSprintStartDate}
+                    onChange={(e) => setNewSprintStartDate(e.target.value)}
+                    className="w-full px-3 py-2 bg-[#131316] border border-[#202024] rounded-lg text-sm text-white focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#71717a] uppercase tracking-wider mb-1.5">
+                    End Date
+                  </label>
+                  <input
+                    type="date"
+                    value={newSprintEndDate}
+                    onChange={(e) => setNewSprintEndDate(e.target.value)}
+                    className="w-full px-3 py-2 bg-[#131316] border border-[#202024] rounded-lg text-sm text-white focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end space-x-3 pt-4 border-t border-[#202024]">
+                <button
+                  type="button"
+                  onClick={() => setIsSprintModalOpen(false)}
+                  className="px-4 py-2 border border-[#202024] hover:bg-[#131316] text-[#a1a1aa] hover:text-white font-medium text-xs rounded-lg transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-lg transition-colors cursor-pointer"
+                >
+                  Create Sprint
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* COMPLETE SPRINT MODAL */}
+      {completeSprintModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
+          <div className="w-full max-w-md bg-[#0d0d0f] rounded-xl shadow-lg border border-[#202024] overflow-hidden animate-slideUp text-[#f3f4f6]">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#202024]">
+              <h3 className="text-lg font-bold text-white">Complete Sprint: {sprintToComplete?.name}</h3>
+              <button onClick={() => setCompleteSprintModalOpen(false)} className="text-gray-500 hover:text-gray-300 focus:outline-none cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCompleteSprint} className="p-6 space-y-4">
+              <p className="text-xs text-[#71717a]">
+                Select where to move any remaining uncompleted issues from this sprint.
+              </p>
+
+              <div>
+                <label className="block text-xs font-bold text-[#71717a] uppercase tracking-wider mb-1.5">
+                  Move Uncompleted Issues To
+                </label>
+                <select
+                  value={moveToSprintId}
+                  onChange={(e) => setMoveToSprintId(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#131316] border border-[#202024] text-white rounded-lg text-sm focus:outline-none"
+                >
+                  <option value="backlog">Backlog</option>
+                  {sprints.filter(s => s.id !== sprintToComplete?.id && s.status !== 'CO').map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.status_display})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center justify-end space-x-3 pt-4 border-t border-[#202024]">
+                <button
+                  type="button"
+                  onClick={() => setCompleteSprintModalOpen(false)}
+                  className="px-4 py-2 border border-[#202024] hover:bg-[#131316] text-[#a1a1aa] hover:text-white font-medium text-xs rounded-lg transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-lg transition-colors cursor-pointer"
+                >
+                  Complete Sprint
                 </button>
               </div>
             </form>

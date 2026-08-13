@@ -14,6 +14,9 @@ import os
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+import sys
+sys.path.insert(0, os.path.join(BASE_DIR, 'apps'))
 TEMPLATE_DIR = os.path.join(BASE_DIR, 'templates')
 STATIC_DIR = os.path.join(BASE_DIR,"static")
 
@@ -66,7 +69,7 @@ MIDDLEWARE = [
     'allauth.account.middleware.AccountMiddleware',
 ]
 
-ROOT_URLCONF = 'jiraClone.urls'
+ROOT_URLCONF = 'jira_clone.urls'
 
 TEMPLATES = [
     {
@@ -84,7 +87,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'jiraClone.wsgi.application'
+WSGI_APPLICATION = 'jira_clone.wsgi.application'
 
 
 # Database

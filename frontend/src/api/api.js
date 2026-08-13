@@ -208,12 +208,47 @@ export const spaceAPI = {
     const response = await api.post('spaces/', data);
     return response.data;
   },
+  update: async (id, data) => {
+    const response = await api.put(`spaces/${id}/`, data);
+    return response.data;
+  },
   delete: async (id) => {
     const response = await api.delete(`spaces/${id}/`);
     return response.data;
   },
   updateColumns: async (id, columns) => {
     const response = await api.post(`spaces/${id}/manage_columns/`, { columns });
+    return response.data;
+  },
+};
+
+export const sprintAPI = {
+  getAll: async (params = {}) => {
+    const response = await api.get('sprints/', { params });
+    return response.data;
+  },
+  getOne: async (id) => {
+    const response = await api.get(`sprints/${id}/`);
+    return response.data;
+  },
+  create: async (data) => {
+    const response = await api.post('sprints/', data);
+    return response.data;
+  },
+  update: async (id, data) => {
+    const response = await api.patch(`sprints/${id}/`, data);
+    return response.data;
+  },
+  delete: async (id) => {
+    const response = await api.delete(`sprints/${id}/`);
+    return response.data;
+  },
+  start: async (id) => {
+    const response = await api.post(`sprints/${id}/start_sprint/`);
+    return response.data;
+  },
+  complete: async (id, moveTo) => {
+    const response = await api.post(`sprints/${id}/complete_sprint/`, { move_to: moveTo });
     return response.data;
   },
 };

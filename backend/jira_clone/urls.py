@@ -16,9 +16,9 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from projects.views import ProjectViewSet, InvitationViewSet, JoinRequestViewSet, SpaceViewSet, PageViewSet
-from issues.views_api import IssueViewSet
-from comments.views_api import CommentViewSet
+from projects.views import ProjectViewSet, InvitationViewSet, JoinRequestViewSet, SpaceViewSet, PageViewSet, SprintViewSet
+from issues.views import IssueViewSet
+from comments.views import CommentViewSet
 from . import views
 
 router = DefaultRouter()
@@ -29,6 +29,7 @@ router.register(r'invitations', InvitationViewSet, basename='invitation')
 router.register(r'join-requests', JoinRequestViewSet, basename='join-request')
 router.register(r'spaces', SpaceViewSet, basename='space')
 router.register(r'pages', PageViewSet, basename='page')
+router.register(r'sprints', SprintViewSet, basename='sprint')
 
 urlpatterns = [
     path('admin/', admin.site.urls),

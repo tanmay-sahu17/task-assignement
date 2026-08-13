@@ -6,8 +6,8 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth import get_user_model
 from rest_framework.authtoken.models import Token
 
-from .models import Project, Invitation, JoinRequest, Space, Page
-from .serializers import ProjectSerializer, InvitationSerializer, JoinRequestSerializer, SpaceSerializer, PageSerializer
+from .models import Project, Invitation, JoinRequest, Space, Page, Sprint
+from .serializers import ProjectSerializer, InvitationSerializer, JoinRequestSerializer, SpaceSerializer, PageSerializer, SprintSerializer
 
 User = get_user_model()
 
@@ -361,3 +361,70 @@ class PageViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("You do not have access to this Space.")
             
         serializer.save(created_by=user)
+
+
+from django.db.models import Count
+
+class SprintViewSet(viewsets.ModelViewSet):
+    serializer_class = SprintSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        space_id = self.request.query_params.get('space')
+        queryset = Sprint.objects.all().annotate(issue_count=Count('issues'))
+
+        if space_id:
+            queryset = queryset.filter(space_id=space_id)
+
+        if user.is_superuser:
+            return queryset.order_by('order', 'created_at')
+
+        from django.db.models import Q
+        return queryset.filter(
+            Q(space__project__isnull=True) | Q(space__project__members=user)
+        ).distinct().order_by('order', 'created_at')
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        space = serializer.validated_data.get('space')
+        if space.project and not space.project.members.filter(id=user.id).exists() and not user.is_superuser:
+            raise PermissionDenied("You do not have access to this Space.")
+        serializer.save()
+
+    @action(detail=True, methods=['post'])
+    def start_sprint(self, request, pk=None):
+        sprint = self.get_object()
+        active_exists = Sprint.objects.filter(space=sprint.space, status=Sprint.Status.ACTIVE).exclude(id=sprint.id).exists()
+        if active_exists:
+            return Response({'error': 'An active sprint already exists in this Space. Please complete it first.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        sprint.status = Sprint.Status.ACTIVE
+        sprint.save()
+        return Response(self.get_serializer(sprint).data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'])
+    def complete_sprint(self, request, pk=None):
+        sprint = self.get_object()
+        move_to = request.data.get('move_to')
+
+        if sprint.status != Sprint.Status.ACTIVE:
+            return Response({'error': 'Only active sprints can be completed.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        sprint.status = Sprint.Status.COMPLETED
+        sprint.save()
+
+        unfinished_issues = sprint.issues.exclude(status='CL')
+
+        if move_to == 'backlog':
+            unfinished_issues.update(sprint=None)
+        elif move_to:
+            try:
+                target_sprint = Sprint.objects.get(id=int(move_to))
+                unfinished_issues.update(sprint=target_sprint)
+            except (ValueError, Sprint.DoesNotExist):
+                unfinished_issues.update(sprint=None)
+        else:
+            unfinished_issues.update(sprint=None)
+
+        return Response(self.get_serializer(sprint).data, status=status.HTTP_200_OK)

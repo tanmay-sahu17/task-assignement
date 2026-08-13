@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { spaceAPI, pageAPI, projectAPI } from '../api/api';
 import { BookOpen, FolderKanban, Plus, X, Loader2, Save, Trash2, Calendar, FileText, Search } from 'lucide-react';
+import Loader from './Loader';
 
 export default function SpacesList({ currentUser }) {
   const [spaces, setSpaces] = useState([]);
@@ -166,11 +167,7 @@ export default function SpacesList({ currentUser }) {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
-      </div>
-    );
+    return <Loader text="Loading Space documents..." fullScreen={false} />;
   }
 
   const filteredPages = pages.filter(p => 
