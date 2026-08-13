@@ -11,9 +11,14 @@ https://docs.djangoproject.com/en/3.0/ref/settings/
 """
 
 import os
+import environ
 
+# Initialize environ
+env = environ.Env()
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Take environment variables from .env file
+environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
 import sys
 sys.path.insert(0, os.path.join(BASE_DIR, 'apps'))
@@ -93,12 +98,33 @@ WSGI_APPLICATION = 'jira_clone.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/3.0/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+if env.str('DATABASE_URL', default=''):
+    DATABASES = {
+        'default': env.db_url('DATABASE_URL')
     }
-}
+else:
+    db_engine = env.str('DB_ENGINE', default='sqlite3')
+    if db_engine == 'mysql':
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.mysql',
+                'NAME': env.str('DB_NAME', default='task_manager'),
+                'USER': env.str('DB_USER', default='root'),
+                'PASSWORD': env.str('DB_PASSWORD', default=''),
+                'HOST': env.str('DB_HOST', default='127.0.0.1'),
+                'PORT': env.str('DB_PORT', default='3306'),
+                'OPTIONS': {
+                    'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+                }
+            }
+        }
+    else:
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.sqlite3',
+                'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+            }
+        }
 
 
 # Password validation
@@ -173,6 +199,11 @@ REST_FRAMEWORK = {
 
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:5174',
+    'http://127.0.0.1:5174',
+    'http://localhost:5175',
+    'http://127.0.0.1:5175',
 ]
 CORS_ALLOW_CREDENTIALS = True
 
@@ -189,4 +220,4 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 # EMAIL_USE_TLS = True
 # EMAIL_HOST_USER = 'your-email@gmail.com'
 # EMAIL_HOST_PASSWORD = 'your-gmail-app-password'
-# DEFAULT_FROM_EMAIL = 'JiraClone <your-email@gmail.com>'
+# DEFAULT_FROM_EMAIL = 'JiraClone <your-email@gmail.com>'

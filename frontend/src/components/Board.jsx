@@ -978,6 +978,29 @@ export default function Board({ spaceId, onBack, currentUser, initialSelectedIss
 
   const projectMembers = project?.members_details || [];
 
+  const existingLabels = Array.from(
+    new Set(
+      issues
+        .map(i => i.label)
+        .flatMap(l => l ? l.split(',').map(tag => tag.trim()) : [])
+        .filter(Boolean)
+    )
+  ).sort();
+
+  const createLabelSuggestions = newLabel.trim() 
+    ? existingLabels.filter(l => 
+        l.toLowerCase().includes(newLabel.toLowerCase().trim()) && 
+        l.toLowerCase() !== newLabel.toLowerCase().trim()
+      )
+    : [];
+
+  const detailLabelSuggestions = selectedIssue && labelText.trim()
+    ? existingLabels.filter(l => 
+        l.toLowerCase().includes(labelText.toLowerCase().trim()) && 
+        !selectedIssue.label?.toLowerCase().split(',').map(tag => tag.trim()).includes(l.toLowerCase())
+      )
+    : [];
+
   const boardColumns = project?.statuses && project.statuses.length > 0
     ? project.statuses.map((statusObj, idx) => {
         const colors = [
@@ -1822,7 +1845,7 @@ export default function Board({ spaceId, onBack, currentUser, initialSelectedIss
                   </select>
                 </div>
 
-                <div>
+                <div className="relative">
                   <label className="block text-xs font-bold text-[#71717a] uppercase tracking-wider mb-1.5">
                     Label
                   </label>
@@ -1833,6 +1856,20 @@ export default function Board({ spaceId, onBack, currentUser, initialSelectedIss
                     className="w-full px-3 py-2 bg-[#131316] border border-[#202024] text-white rounded-lg text-sm focus:outline-none"
                     placeholder="e.g. Front-end"
                   />
+                  {createLabelSuggestions.length > 0 && (
+                    <div className="absolute left-0 right-0 mt-1 bg-[#131316] border border-[#202024] rounded-lg shadow-xl max-h-32 overflow-y-auto z-50">
+                      {createLabelSuggestions.map((lbl, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setNewLabel(lbl)}
+                          className="w-full text-left px-3 py-1.5 hover:bg-[#1c1c1f] text-xs text-[#a1a1aa] hover:text-white transition-colors cursor-pointer"
+                        >
+                          {lbl}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -2182,27 +2219,51 @@ export default function Board({ spaceId, onBack, currentUser, initialSelectedIss
                         </button>
                       </span>
                     ))}
-                    <input
-                      type="text"
-                      value={labelText}
-                      onChange={(e) => setLabelText(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          const newTag = labelText.trim();
-                          if (newTag) {
-                            const currentLabels = selectedIssue.label ? selectedIssue.label.split(',').map(l => l.trim()).filter(Boolean) : [];
-                            if (!currentLabels.includes(newTag)) {
-                              const updatedLabels = [...currentLabels, newTag].join(', ');
-                              handleIssueUpdateField('label', updatedLabels);
+                    <div className="relative flex-1 min-w-[120px]">
+                      <input
+                        type="text"
+                        value={labelText}
+                        onChange={(e) => setLabelText(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            const newTag = labelText.trim();
+                            if (newTag) {
+                              const currentLabels = selectedIssue.label ? selectedIssue.label.split(',').map(l => l.trim()).filter(Boolean) : [];
+                              if (!currentLabels.includes(newTag)) {
+                                const updatedLabels = [...currentLabels, newTag].join(', ');
+                                handleIssueUpdateField('label', updatedLabels);
+                              }
+                              setLabelText('');
                             }
-                            setLabelText('');
                           }
-                        }
-                      }}
-                      placeholder={(selectedIssue.label ? selectedIssue.label.split(',').map(l => l.trim()).filter(Boolean) : []).length === 0 ? "Add label & press Enter..." : ""}
-                      className="flex-1 min-w-[60px] bg-transparent text-xs text-white focus:outline-none py-0.5 border-none outline-none"
-                    />
+                        }}
+                        placeholder={(selectedIssue.label ? selectedIssue.label.split(',').map(l => l.trim()).filter(Boolean) : []).length === 0 ? "Add label & press Enter..." : ""}
+                        className="w-full bg-transparent text-xs text-white focus:outline-none py-0.5 border-none outline-none"
+                      />
+                      {detailLabelSuggestions.length > 0 && (
+                        <div className="absolute left-0 right-0 mt-6 bg-[#131316] border border-[#202024] rounded-lg shadow-xl max-h-32 overflow-y-auto z-50">
+                          {detailLabelSuggestions.map((lbl, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const currentLabels = selectedIssue.label ? selectedIssue.label.split(',').map(l => l.trim()).filter(Boolean) : [];
+                                if (!currentLabels.includes(lbl)) {
+                                  const updatedLabels = [...currentLabels, lbl].join(', ');
+                                  handleIssueUpdateField('label', updatedLabels);
+                                }
+                                setLabelText('');
+                              }}
+                              className="w-full text-left px-3 py-1.5 hover:bg-[#1c1c1f] text-xs text-[#a1a1aa] hover:text-white transition-colors cursor-pointer"
+                            >
+                              {lbl}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 

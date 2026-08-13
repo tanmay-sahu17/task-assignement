@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { spaceAPI, pageAPI, projectAPI } from '../api/api';
-import { BookOpen, FolderKanban, Plus, X, Loader2, Save, Trash2, Calendar, FileText, Search } from 'lucide-react';
+import { BookOpen, FolderKanban, Plus, X, Loader2, Save, Trash2, Calendar, FileText, Search, MoreVertical } from 'lucide-react';
 import Loader from './Loader';
 
 export default function SpacesList({ currentUser }) {
@@ -21,6 +21,25 @@ export default function SpacesList({ currentUser }) {
   const [spaceProject, setSpaceProject] = useState('');
   const [spaceError, setSpaceError] = useState('');
   const [spaceSubmitLoading, setSpaceSubmitLoading] = useState(false);
+
+  // Edit Space states
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingSpace, setEditingSpace] = useState(null);
+  const [editSpaceName, setEditSpaceName] = useState('');
+  const [editSpaceKey, setEditSpaceKey] = useState('');
+  const [editSpaceDescription, setEditSpaceDescription] = useState('');
+  const [editSpaceError, setEditSpaceError] = useState('');
+  const [editSpaceSubmitLoading, setEditSpaceSubmitLoading] = useState(false);
+
+  // Three-dot dropdown menu state
+  const [activeMenuSpaceId, setActiveMenuSpaceId] = useState(null);
+
+  // Close menus on outside click
+  useEffect(() => {
+    const handleCloseMenus = () => setActiveMenuSpaceId(null);
+    window.addEventListener('click', handleCloseMenus);
+    return () => window.removeEventListener('click', handleCloseMenus);
+  }, []);
 
   // Editor states (local copies for inputs)
   const [editorTitle, setEditorTitle] = useState('');
@@ -109,6 +128,39 @@ export default function SpacesList({ currentUser }) {
       }
     } catch (err) {
       alert('Failed to delete Space.');
+    }
+  };
+
+  const handleUpdateSpace = async (e) => {
+    e.preventDefault();
+    if (!editSpaceName || !editSpaceKey) {
+      setEditSpaceError('Space name and unique key are required.');
+      return;
+    }
+    setEditSpaceError('');
+    setEditSpaceSubmitLoading(true);
+    try {
+      const updated = await spaceAPI.update(editingSpace.id, {
+        name: editSpaceName,
+        key: editSpaceKey.toUpperCase(),
+        description: editSpaceDescription,
+        project: editingSpace.project
+      });
+      
+      setSpaces(spaces.map(s => s.id === updated.id ? updated : s));
+      if (selectedSpace?.id === updated.id) {
+        setSelectedSpace(updated);
+      }
+      
+      setIsEditModalOpen(false);
+      setEditingSpace(null);
+      setEditSpaceName('');
+      setEditSpaceKey('');
+      setEditSpaceDescription('');
+    } catch (err) {
+      setEditSpaceError(err.response?.data?.key?.[0] || err.response?.data?.error || 'Failed to update Space.');
+    } finally {
+      setEditSpaceSubmitLoading(false);
     }
   };
 
@@ -213,15 +265,50 @@ export default function SpacesList({ currentUser }) {
                       <span className="truncate">{s.name}</span>
                     </div>
 
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteSpace(s.id);
-                      }}
-                      className="p-0.5 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity focus:outline-none"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    {/* Admin/Superuser controls via three-dot menu */}
+                    {currentUser?.is_superuser && (
+                      <div className="relative shrink-0">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveMenuSpaceId(activeMenuSpaceId === s.id ? null : s.id);
+                          }}
+                          className="p-1 hover:bg-[#28282c] text-[#71717a] hover:text-white rounded transition-colors focus:outline-none cursor-pointer"
+                        >
+                          <MoreVertical className="w-3.5 h-3.5" />
+                        </button>
+                        
+                        {activeMenuSpaceId === s.id && (
+                          <div 
+                            className="absolute right-0 mt-1 bg-[#131316] border border-[#202024] rounded-lg shadow-xl py-1 w-28 z-50 animate-fadeIn"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <button
+                              onClick={() => {
+                                setEditingSpace(s);
+                                setEditSpaceName(s.name);
+                                setEditSpaceKey(s.key);
+                                setEditSpaceDescription(s.description || '');
+                                setIsEditModalOpen(true);
+                                setActiveMenuSpaceId(null);
+                              }}
+                              className="w-full text-left px-3 py-1.5 hover:bg-[#1c1c1f] text-xs text-[#a1a1aa] hover:text-white transition-colors"
+                            >
+                              Edit Space
+                            </button>
+                            <button
+                              onClick={() => {
+                                handleDeleteSpace(s.id);
+                                setActiveMenuSpaceId(null);
+                              }}
+                              className="w-full text-left px-3 py-1.5 hover:bg-red-950/20 text-xs text-red-400 transition-colors font-semibold"
+                            >
+                              Delete Space
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })
@@ -465,6 +552,96 @@ export default function SpacesList({ currentUser }) {
                     </>
                   ) : (
                     'Create Space'
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* EDIT SPACE MODAL */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
+          <div className="w-full max-w-md bg-[#0d0d0f] rounded-xl shadow-lg border border-[#202024] overflow-hidden animate-slideUp text-[#f3f4f6]">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#202024]">
+              <h3 className="text-lg font-bold text-white">Edit Space Details</h3>
+              <button
+                onClick={() => {
+                  setIsEditModalOpen(false);
+                  setEditingSpace(null);
+                }}
+                className="text-gray-400 hover:text-gray-200 focus:outline-none cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {editSpaceError && (
+              <div className="mx-6 mt-4 p-3 bg-red-955/20 border border-red-900/50 text-red-400 text-xs rounded-lg">
+                {editSpaceError}
+              </div>
+            )}
+
+            <form onSubmit={handleUpdateSpace} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-[#71717a] uppercase mb-1.5">Space Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={editSpaceName}
+                  onChange={(e) => setEditSpaceName(e.target.value)}
+                  placeholder="e.g. API Reference Guidelines"
+                  className="w-full px-3 py-2 bg-[#131316] border border-[#202024] text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#71717a] uppercase mb-1.5">Space Key (Unique) *</label>
+                <input
+                  type="text"
+                  required
+                  maxLength={10}
+                  value={editSpaceKey}
+                  onChange={(e) => setEditSpaceKey(e.target.value)}
+                  placeholder="e.g. API"
+                  className="w-full px-3 py-2 bg-[#131316] border border-[#202024] text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#71717a] uppercase mb-1.5">Description</label>
+                <textarea
+                  value={editSpaceDescription}
+                  onChange={(e) => setEditSpaceDescription(e.target.value)}
+                  placeholder="Describe the purpose of this space..."
+                  rows={3}
+                  className="w-full px-3 py-2 bg-[#131316] border border-[#202024] text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 resize-none"
+                />
+              </div>
+
+              <div className="pt-4 flex items-center justify-end space-x-3 border-t border-[#202024]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditModalOpen(false);
+                    setEditingSpace(null);
+                  }}
+                  className="px-4 py-2 border border-[#202024] hover:bg-[#18181c] text-[#71717a] hover:text-white font-medium text-xs rounded-lg transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={editSpaceSubmitLoading}
+                  className="flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-semibold text-xs rounded-lg transition-colors focus:outline-none cursor-pointer"
+                >
+                  {editSpaceSubmitLoading ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                      Saving...
+                    </>
+                  ) : (
+                    'Save Changes'
                   )}
                 </button>
               </div>
