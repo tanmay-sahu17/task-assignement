@@ -5,7 +5,7 @@ import sys
 
 
 def main():
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'jira_clone.settings')
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
     
     # Add 'apps' subdirectory to path
     base_dir = os.path.dirname(os.path.abspath(__file__))

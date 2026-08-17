@@ -57,6 +57,14 @@ export const authAPI = {
     }
     return response.data;
   },
+  googleLogin: async (credential) => {
+    const response = await api.post('auth/google/', { credential });
+    if (response.data.token) {
+      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('user', JSON.stringify(response.data.user));
+    }
+    return response.data;
+  },
   logout: async () => {
     try {
       await api.post('auth/logout/');
@@ -270,6 +278,71 @@ export const pageAPI = {
     const response = await api.delete(`pages/${id}/`);
     return response.data;
   },
+};
+
+export const notificationAPI = {
+  registerToken: async (fcmToken, action = 'register') => {
+    const response = await api.post('notifications/register/', {
+      registration_token: fcmToken,
+      action
+    });
+    return response.data;
+  },
+  getNotifications: async (unreadOnly = false) => {
+    const response = await api.get('notifications/', { params: { unread_only: unreadOnly } });
+    return response.data;
+  },
+  markAsRead: async (notificationIds = [], markAll = false) => {
+    const response = await api.post('notifications/', {
+      notification_ids: notificationIds,
+      mark_all: markAll
+    });
+    return response.data;
+  }
+};
+
+export const analyticsAPI = {
+  getDashboardData: async (projectId = null) => {
+    const params = projectId ? { project_id: projectId } : {};
+    const response = await api.get('analytics/dashboard/', { params });
+    return response.data;
+  }
+};
+
+export const searchAPI = {
+  query: async (q) => {
+    const response = await api.get('search/', { params: { q } });
+    return response.data;
+  }
+};
+
+export const issueLinkAPI = {
+  create: async (data) => {
+    const response = await api.post('issue-links/', data);
+    return response.data;
+  },
+  delete: async (id) => {
+    const response = await api.delete(`issue-links/${id}/`);
+    return response.data;
+  }
+};
+
+export const attachmentAPI = {
+  upload: async (issueNo, file) => {
+    const formData = new FormData();
+    formData.append('issue', issueNo);
+    formData.append('file', file);
+    const response = await api.post('attachments/', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+    return response.data;
+  },
+  delete: async (id) => {
+    const response = await api.delete(`attachments/${id}/`);
+    return response.data;
+  }
 };
 
 export default api;

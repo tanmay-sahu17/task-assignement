@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Issue
+from .models import Issue, IssueLink, IssueAttachment
 from projects.serializers import UserSerializer, ProjectSerializer, SpaceSerializer, SprintSerializer
 
 class EpicDetailsSerializer(serializers.ModelSerializer):
@@ -22,6 +22,38 @@ class ChildIssueSerializer(serializers.ModelSerializer):
                 return status_obj.name
         return obj.get_status_display()
 
+
+class LinkIssueDetailsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Issue
+        fields = ('issue_no', 'title', 'status', 'priority')
+
+
+class IssueLinkSerializer(serializers.ModelSerializer):
+    from_issue_details = LinkIssueDetailsSerializer(source='from_issue', read_only=True)
+    to_issue_details = LinkIssueDetailsSerializer(source='to_issue', read_only=True)
+    type_display = serializers.CharField(source='get_type_display', read_only=True)
+    
+    class Meta:
+        model = IssueLink
+        fields = ('id', 'from_issue', 'from_issue_details', 'to_issue', 'to_issue_details', 'type', 'type_display')
+
+
+class IssueAttachmentSerializer(serializers.ModelSerializer):
+    uploaded_by_details = UserSerializer(source='uploaded_by', read_only=True)
+    file_url = serializers.SerializerMethodField(read_only=True)
+    
+    class Meta:
+        model = IssueAttachment
+        fields = ('id', 'issue', 'file', 'file_url', 'filename', 'uploaded_by', 'uploaded_by_details', 'uploaded_at')
+        read_only_fields = ('uploaded_by', 'filename')
+        
+    def get_file_url(self, obj):
+        if obj.file:
+            return obj.file.url
+        return ""
+
+
 class IssueSerializer(serializers.ModelSerializer):
     reporter_details = UserSerializer(source='reporter', read_only=True)
     assignee_details = UserSerializer(source='assignee', read_only=True)
@@ -35,6 +67,10 @@ class IssueSerializer(serializers.ModelSerializer):
     
     epic_details = EpicDetailsSerializer(source='epic', read_only=True)
     child_issues_details = serializers.SerializerMethodField(read_only=True)
+    
+    outgoing_links = IssueLinkSerializer(many=True, read_only=True)
+    incoming_links = IssueLinkSerializer(many=True, read_only=True)
+    attachments = IssueAttachmentSerializer(many=True, read_only=True)
 
     class Meta:
         model = Issue
@@ -43,7 +79,8 @@ class IssueSerializer(serializers.ModelSerializer):
             'reporter', 'reporter_details', 'assignee', 'assignee_details', 
             'title', 'details', 'type', 'type_display', 'status', 'status_display', 
             'priority', 'priority_display', 'label', 'created_at', 'epic', 
-            'epic_details', 'start_date', 'due_date', 'child_issues_details'
+            'epic_details', 'start_date', 'due_date', 'child_issues_details',
+            'outgoing_links', 'incoming_links', 'attachments', 'story_points'
         )
         read_only_fields = ('reporter',)
 

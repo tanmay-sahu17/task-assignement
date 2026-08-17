@@ -143,4 +143,84 @@ def profile_api(request):
                 'phone': profile.phone,
                 'location': profile.location,
             }
-        })
+        })
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def google_login_api(request):
+    from google.oauth2 import id_token
+    from google.auth.transport import requests as google_requests
+    import os
+    
+    token = request.data.get('credential')
+    if not token:
+        return Response({'error': 'No Google credential provided.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+    google_client_id = os.environ.get('GOOGLE_CLIENT_ID')
+    if not google_client_id:
+        return Response({'error': 'Google Client ID is not configured on the server.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+    try:
+        # Verify the token with Google
+        idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), google_client_id)
+        
+        # Audience check
+        if idinfo['aud'] != google_client_id:
+            return Response({'error': 'Audience mismatch.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        email = idinfo.get('email')
+        if not email:
+            return Response({'error': 'No email address associated with Google account.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        google_user_id = idinfo['sub']
+        name = idinfo.get('name', '')
+        
+        # Find or create user by email
+        user = User.objects.filter(email=email).first()
+        
+        if not user:
+            # Generate a unique username from email
+            base_username = email.split('@')[0]
+            username = base_username
+            counter = 1
+            while User.objects.filter(username=username).exists():
+                username = f"{base_username}{counter}"
+                counter += 1
+                
+            user = User.objects.create_user(username=username, email=email)
+            
+            if name:
+                parts = name.split(' ', 1)
+                user.first_name = parts[0]
+                if len(parts) > 1:
+                    user.last_name = parts[1]
+                user.save()
+                
+            # Update user profile
+            if hasattr(user, 'profile'):
+                profile = user.profile
+                if name:
+                    parts = name.split(' ', 1)
+                    profile.first_name = parts[0]
+                    if len(parts) > 1:
+                        profile.last_name = parts[1]
+                profile.save()
+                
+        auth_token, created = Token.objects.get_or_create(user=user)
+        
+        return Response({
+            'token': auth_token.key,
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'is_superuser': user.is_superuser,
+                'avatar_color': user.profile.avatar_color if hasattr(user, 'profile') else '#4f46e5',
+            }
+        }, status=status.HTTP_200_OK)
+        
+    except ValueError:
+        return Response({'error': 'Invalid Google credential token.'}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        return Response({'error': f'Google authentication failed: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)

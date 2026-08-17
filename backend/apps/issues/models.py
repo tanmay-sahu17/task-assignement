@@ -61,6 +61,7 @@ class Issue(models.Model):
     sprint = models.ForeignKey(Sprint, on_delete=models.SET_NULL, null=True, blank=True, related_name='issues')
     start_date = models.DateField(null=True, blank=True)
     due_date = models.DateField(null=True, blank=True)
+    story_points = models.PositiveIntegerField(default=1, null=True, blank=True)
 
 
     def get_absolute_url(self):
@@ -69,3 +70,33 @@ class Issue(models.Model):
     def __str__(self):
         returnString = f"#{self.issue_no} {self.title}"
         return returnString
+
+
+class IssueLink(models.Model):
+    class LinkType(models.TextChoices):
+        BLOCKS = 'BL', 'Blocks'
+        BLOCKED_BY = 'BB', 'Blocked by'
+        DUPLICATES = 'DU', 'Duplicates'
+        RELATES_TO = 'RE', 'Relates to'
+
+    from_issue = models.ForeignKey(Issue, on_delete=models.CASCADE, related_name='outgoing_links')
+    to_issue = models.ForeignKey(Issue, on_delete=models.CASCADE, related_name='incoming_links')
+    type = models.CharField(max_length=2, choices=LinkType.choices, default=LinkType.RELATES_TO)
+
+    class Meta:
+        unique_together = ('from_issue', 'to_issue', 'type')
+
+    def __str__(self):
+        return f"#{self.from_issue.issue_no} {self.get_type_display()} #{self.to_issue.issue_no}"
+
+
+class IssueAttachment(models.Model):
+    issue = models.ForeignKey(Issue, on_delete=models.CASCADE, related_name='attachments')
+    file = models.FileField(upload_to='issue_attachments/')
+    filename = models.CharField(max_length=255)
+    uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='uploaded_attachments')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Attachment for #{self.issue.issue_no}: {self.filename}"
+

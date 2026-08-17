@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { projectAPI, issueAPI, commentAPI, authAPI, spaceAPI, pageAPI, sprintAPI } from '../api/api';
-import { Plus, X, Loader2, ArrowLeft, Search, MessageSquare, Trash2, Calendar, User, Users, FolderKanban, Save, FileText } from 'lucide-react';
+import { projectAPI, issueAPI, commentAPI, authAPI, spaceAPI, pageAPI, sprintAPI, issueLinkAPI } from '../api/api';
+import { Plus, X, Loader2, ArrowLeft, Search, MessageSquare, Trash2, Calendar, User, Users, FolderKanban, Save, FileText, Link2 } from 'lucide-react';
 import Loader from './Loader';
 
 const EpicIcon = ({ className = "w-4 h-4" }) => (
@@ -55,6 +55,12 @@ export default function Board({ spaceId, onBack, currentUser, initialSelectedIss
   const [newLabel, setNewLabel] = useState('');
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState('');
+
+  const [newStoryPoints, setNewStoryPoints] = useState(1);
+  const [linkType, setLinkType] = useState('RE');
+  const [linkTargetIssueNo, setLinkTargetIssueNo] = useState('');
+  const [isLinkingLoading, setIsLinkingLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Tab and Epic states
   const [activeTab, setActiveTab] = useState('board');
@@ -373,6 +379,7 @@ export default function Board({ spaceId, onBack, currentUser, initialSelectedIss
         label: newLabel,
         epic: newEpic || null,
         sprint: newSprint || null,
+        story_points: newStoryPoints,
       };
       await issueAPI.create(data);
       setIsCreateModalOpen(false);
@@ -382,6 +389,7 @@ export default function Board({ spaceId, onBack, currentUser, initialSelectedIss
       setNewLabel('');
       setNewEpic('');
       setNewSprint('');
+      setNewStoryPoints(1);
       loadData();
     } catch (err) {
       setCreateError(err.response?.data?.assignee?.[0] || 'Failed to create issue.');
@@ -395,12 +403,76 @@ export default function Board({ spaceId, onBack, currentUser, initialSelectedIss
     try {
       const updated = await issueAPI.update(selectedIssue.issue_no, { [field]: value });
       setSelectedIssue(updated);
-      setIssues(issues.map(i => i.issue_no === updated.issue_no ? updated : i));
+      loadData();
     } catch (err) {
-      console.error(`Failed to update issue field ${field}`, err);
-      if (err.response?.data?.assignee) {
-        alert(err.response.data.assignee[0]);
-      }
+      console.error('Failed to update issue field', err);
+    }
+  };
+
+  const handleCreateIssueLink = async (e) => {
+    e.preventDefault();
+    if (!linkTargetIssueNo || !selectedIssue) return;
+    setIsLinkingLoading(true);
+    try {
+      await issueLinkAPI.create({
+        from_issue: selectedIssue.issue_no,
+        to_issue: parseInt(linkTargetIssueNo),
+        type: linkType
+      });
+      setLinkTargetIssueNo('');
+      const updatedIssue = await issueAPI.getOne(selectedIssue.issue_no);
+      setSelectedIssue(updatedIssue);
+      const freshIssues = await issueAPI.getAll({ space: spaceId });
+      setIssues(freshIssues);
+    } catch (err) {
+      console.error("Failed to create issue link:", err);
+      alert("Failed to create issue link. Check if it already exists.");
+    } finally {
+      setIsLinkingLoading(false);
+    }
+  };
+
+  const handleDeleteIssueLink = async (linkId) => {
+    if (!window.confirm("Are you sure you want to remove this dependency link?")) return;
+    try {
+      await issueLinkAPI.delete(linkId);
+      const updatedIssue = await issueAPI.getOne(selectedIssue.issue_no);
+      setSelectedIssue(updatedIssue);
+      const freshIssues = await issueAPI.getAll({ space: spaceId });
+      setIssues(freshIssues);
+    } catch (err) {
+      console.error("Failed to delete issue link:", err);
+    }
+  };
+
+  const handleUploadFile = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !selectedIssue) return;
+    setIsUploading(true);
+    try {
+      await attachmentAPI.upload(selectedIssue.issue_no, file);
+      const updatedIssue = await issueAPI.getOne(selectedIssue.issue_no);
+      setSelectedIssue(updatedIssue);
+      const freshIssues = await issueAPI.getAll({ space: spaceId });
+      setIssues(freshIssues);
+    } catch (err) {
+      console.error("Failed to upload file:", err);
+      alert("Failed to upload file. Please try again.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDeleteAttachment = async (attachmentId) => {
+    if (!window.confirm("Are you sure you want to delete this attachment?")) return;
+    try {
+      await attachmentAPI.delete(attachmentId);
+      const updatedIssue = await issueAPI.getOne(selectedIssue.issue_no);
+      setSelectedIssue(updatedIssue);
+      const freshIssues = await issueAPI.getAll({ space: spaceId });
+      setIssues(freshIssues);
+    } catch (err) {
+      console.error("Failed to delete attachment:", err);
     }
   };
 
@@ -1809,6 +1881,20 @@ export default function Board({ spaceId, onBack, currentUser, initialSelectedIss
                 </select>
               </div>
 
+              <div>
+                <label className="block text-xs font-bold text-[#71717a] uppercase tracking-wider mb-1.5">
+                  Story Points
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={newStoryPoints}
+                  onChange={(e) => setNewStoryPoints(parseInt(e.target.value) || 0)}
+                  className="w-full px-3 py-2 bg-[#131316] border border-[#202024] rounded-lg text-sm text-white focus:outline-none transition-all"
+                  placeholder="e.g. 5"
+                />
+              </div>
+
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-[#71717a] uppercase tracking-wider mb-1.5">
@@ -2066,6 +2152,212 @@ export default function Board({ spaceId, onBack, currentUser, initialSelectedIss
                 </div>
               )}
 
+              {/* Linked Issues (Dependencies) Section */}
+              <div className="space-y-4 pt-4 border-t border-[#202024]">
+                <h4 className="text-sm font-bold text-white flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Link2 className="w-4 h-4 text-indigo-400" />
+                    <span>Linked Issues</span>
+                  </div>
+                  <span className="px-2 py-0.5 bg-[#1c1c1f] text-[#a1a1aa] text-xs font-semibold rounded-full">
+                    {((selectedIssue.outgoing_links?.length || 0) + (selectedIssue.incoming_links?.length || 0))}
+                  </span>
+                </h4>
+
+                <div className="space-y-2">
+                  {selectedIssue.outgoing_links?.map(link => (
+                    <div key={link.id} className="flex items-center justify-between p-2.5 bg-[#131316] border border-[#202024] rounded-lg text-xs">
+                      <div className="flex items-center space-x-2 min-w-0">
+                        <span className="font-semibold text-indigo-400 shrink-0">
+                          {link.type_display} &rarr;
+                        </span>
+                        <button
+                          onClick={() => {
+                            setSelectedIssue(null);
+                            setTimeout(() => {
+                              const targetObj = issues.find(i => i.issue_no === link.to_issue);
+                              if (targetObj) setSelectedIssue(targetObj);
+                            }, 50);
+                          }}
+                          className="font-medium text-[#e4e4e7] hover:text-white truncate hover:underline text-left focus:outline-none"
+                        >
+                          #{link.to_issue} {link.to_issue_details?.title}
+                        </button>
+                      </div>
+                      <div className="flex items-center space-x-3 shrink-0 ml-2">
+                        <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded ${
+                          link.to_issue_details?.status === 'CL' ? 'bg-emerald-950/40 text-emerald-400' : 'bg-[#1b1b21] text-gray-400'
+                        }`}>
+                          {link.to_issue_details?.status === 'OP' ? 'Open' : link.to_issue_details?.status === 'IN' ? 'In Progress' : 'Closed'}
+                        </span>
+                        <button
+                          onClick={() => handleDeleteIssueLink(link.id)}
+                          className="text-gray-500 hover:text-red-400 transition-colors focus:outline-none"
+                          title="Remove link"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {selectedIssue.incoming_links?.map(link => {
+                    const inverseTypes = {
+                      'BL': 'Blocked by',
+                      'BB': 'Blocks',
+                      'DU': 'Is duplicated by',
+                      'RE': 'Relates to'
+                    };
+                    const typeDisplay = inverseTypes[link.type] || link.type_display;
+                    return (
+                      <div key={link.id} className="flex items-center justify-between p-2.5 bg-[#131316] border border-[#202024] rounded-lg text-xs">
+                        <div className="flex items-center space-x-2 min-w-0">
+                          <span className="font-semibold text-[#a1a1aa] shrink-0">
+                            &larr; {typeDisplay}
+                          </span>
+                          <button
+                            onClick={() => {
+                              setSelectedIssue(null);
+                              setTimeout(() => {
+                                const targetObj = issues.find(i => i.issue_no === link.from_issue);
+                                if (targetObj) setSelectedIssue(targetObj);
+                              }, 50);
+                            }}
+                            className="font-medium text-[#e4e4e7] hover:text-white truncate hover:underline text-left focus:outline-none"
+                          >
+                            #{link.from_issue} {link.from_issue_details?.title}
+                          </button>
+                        </div>
+                        <div className="flex items-center space-x-3 shrink-0 ml-2">
+                          <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded ${
+                            link.from_issue_details?.status === 'CL' ? 'bg-emerald-950/40 text-emerald-400' : 'bg-[#1b1b21] text-gray-400'
+                          }`}>
+                            {link.from_issue_details?.status === 'OP' ? 'Open' : link.from_issue_details?.status === 'IN' ? 'In Progress' : 'Closed'}
+                          </span>
+                          <button
+                            onClick={() => handleDeleteIssueLink(link.id)}
+                            className="text-gray-500 hover:text-red-400 transition-colors focus:outline-none"
+                            title="Remove link"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <form onSubmit={handleCreateIssueLink} className="flex flex-col sm:flex-row items-center gap-2.5 p-3 bg-[#131316]/50 border border-dashed border-[#202024] rounded-xl">
+                  <select
+                    value={linkType}
+                    onChange={(e) => setLinkType(e.target.value)}
+                    className="w-full sm:w-auto bg-[#131316] border border-[#202024] rounded-md text-xs text-[#a1a1aa] px-2 py-1.5 focus:outline-none cursor-pointer"
+                  >
+                    <option value="RE">Relates to</option>
+                    <option value="BL">Blocks</option>
+                    <option value="DU">Duplicates</option>
+                  </select>
+                  <select
+                    value={linkTargetIssueNo}
+                    onChange={(e) => setLinkTargetIssueNo(e.target.value)}
+                    required
+                    className="w-full sm:flex-1 bg-[#131316] border border-[#202024] rounded-md text-xs text-white px-2 py-1.5 focus:outline-none cursor-pointer"
+                  >
+                    <option value="">Select another task...</option>
+                    {issues
+                      .filter(i => i.issue_no !== selectedIssue.issue_no)
+                      .map(i => (
+                        <option key={i.issue_no} value={i.issue_no}>
+                          #{i.issue_no} - {i.title.substring(0, 40)}
+                        </option>
+                      ))}
+                  </select>
+                  <button
+                    type="submit"
+                    disabled={isLinkingLoading}
+                    className="w-full sm:w-auto px-3.5 py-1.5 bg-indigo-650 hover:bg-indigo-750 text-white rounded-md text-xs font-semibold disabled:bg-indigo-400/50 transition-colors cursor-pointer"
+                  >
+                    Link
+                  </button>
+                </form>
+              </div>
+
+              {/* Attachments Section */}
+              <div className="space-y-4 pt-4 border-t border-[#202024]">
+                <h4 className="text-sm font-bold text-white flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <FileText className="w-4 h-4 text-emerald-400" />
+                    <span>Attachments</span>
+                  </div>
+                  <span className="px-2 py-0.5 bg-[#1c1c1f] text-[#a1a1aa] text-xs font-semibold rounded-full">
+                    {selectedIssue.attachments?.length || 0}
+                  </span>
+                </h4>
+
+                {/* Attachments Grid List */}
+                {selectedIssue.attachments && selectedIssue.attachments.length > 0 && (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {selectedIssue.attachments.map((file) => {
+                      const isImage = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(file.filename);
+                      return (
+                        <div key={file.id} className="group relative bg-[#131316] border border-[#202024] rounded-lg overflow-hidden flex flex-col justify-between hover:border-[#2e2e36] transition-all min-h-[90px]">
+                          {/* Image preview / Icon placeholder */}
+                          <div className="flex-1 flex items-center justify-center p-2 bg-[#09090b]/50 border-b border-[#202024]">
+                            {isImage ? (
+                              <img src={file.file_url} alt={file.filename} className="max-h-12 object-contain rounded" />
+                            ) : (
+                              <FileText className="w-6 h-6 text-gray-500" />
+                            )}
+                          </div>
+                          
+                          {/* File info */}
+                          <div className="p-2 flex items-center justify-between">
+                            <a
+                              href={file.file_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[10px] text-[#e4e4e7] hover:underline font-medium truncate block max-w-[80%]"
+                              title={file.filename}
+                            >
+                              {file.filename}
+                            </a>
+                            <button
+                              onClick={() => handleDeleteAttachment(file.id)}
+                              className="text-gray-500 hover:text-red-400 focus:outline-none transition-colors ml-1 shrink-0"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Upload attachment button */}
+                <div className="flex items-center space-x-3">
+                  <label className="flex items-center justify-center px-4 py-2 border border-dashed border-[#202024] hover:bg-[#18181c] rounded-xl text-xs font-semibold text-gray-400 hover:text-white transition-all cursor-pointer">
+                    {isUploading ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin mr-2 text-indigo-500" />
+                        Uploading to Cloudinary...
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="w-3.5 h-3.5 mr-1.5" />
+                        Upload Attachment
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      disabled={isUploading}
+                      onChange={handleUploadFile}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              </div>
+
               {/* Comments Section */}
               <div className="space-y-4 pt-4 border-t border-[#202024]">
                 <h4 className="text-sm font-bold text-white flex items-center space-x-2">
@@ -2192,6 +2484,20 @@ export default function Board({ spaceId, onBack, currentUser, initialSelectedIss
                       </option>
                     ))}
                   </select>
+                </div>
+
+                {/* Story Points Selection */}
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] font-bold text-[#71717a] uppercase tracking-wider">
+                    Story Points
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={selectedIssue.story_points || 0}
+                    onChange={(e) => handleIssueUpdateField('story_points', parseInt(e.target.value) || 0)}
+                    className="w-full px-2.5 py-1.5 bg-[#131316] border border-[#202024] rounded-md text-xs text-[#e4e4e7] focus:outline-none"
+                  />
                 </div>
 
                 {/* Label Selection (Interactive Tags Input) */}

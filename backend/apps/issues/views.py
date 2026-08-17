@@ -1,7 +1,8 @@
 from rest_framework import viewsets
-from .models import Issue
-from .serializers import IssueSerializer
+from .models import Issue, IssueLink, IssueAttachment
+from .serializers import IssueSerializer, IssueLinkSerializer, IssueAttachmentSerializer
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.parsers import MultiPartParser, FormParser
 
 class IssueViewSet(viewsets.ModelViewSet):
     queryset = Issue.objects.all().order_by('-created_at')
@@ -50,3 +51,23 @@ class IssueViewSet(viewsets.ModelViewSet):
             serializer.save(reporter=self.request.user, project=space.project)
         else:
             serializer.save(reporter=self.request.user)
+
+
+class IssueLinkViewSet(viewsets.ModelViewSet):
+    queryset = IssueLink.objects.all()
+    serializer_class = IssueLinkSerializer
+    permission_classes = [IsAuthenticated]
+
+
+class IssueAttachmentViewSet(viewsets.ModelViewSet):
+    queryset = IssueAttachment.objects.all()
+    serializer_class = IssueAttachmentSerializer
+    permission_classes = [IsAuthenticated]
+    parser_classes = (MultiPartParser, FormParser)
+
+    def perform_create(self, serializer):
+        uploaded_file = self.request.data.get('file')
+        filename = uploaded_file.name if uploaded_file else "attachment"
+        serializer.save(uploaded_by=self.request.user, filename=filename)
+
+

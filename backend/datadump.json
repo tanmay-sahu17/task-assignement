@@ -1,0 +1,584 @@
+[
+{
+    "model": "auth.user",
+    "fields": {
+        "password": "pbkdf2_sha256$1500000$3odt6KY4ta32Mcn53Nm4Hb$SsTDWvA6xd//sYqw0CQnzexMzVwaT/12C7zIL6DLFAg=",
+        "last_login": null,
+        "is_superuser": false,
+        "username": "admin",
+        "first_name": "",
+        "last_name": "",
+        "email": "admin@gmail.com",
+        "is_staff": false,
+        "is_active": true,
+        "date_joined": "2026-08-10T05:13:53.437Z",
+        "groups": [],
+        "user_permissions": []
+    }
+},
+{
+    "model": "auth.user",
+    "fields": {
+        "password": "pbkdf2_sha256$1500000$eV7VKN7W8uzTLw5T3QQWi0$DNCkX7izmP8LlZW3tza6p5ls8ToWUKije1ZvP80ailc=",
+        "last_login": "2026-08-10T06:28:44.028Z",
+        "is_superuser": true,
+        "username": "user-68",
+        "first_name": "",
+        "last_name": "",
+        "email": "admin1@gmail.com",
+        "is_staff": true,
+        "is_active": true,
+        "date_joined": "2026-08-10T05:15:20.256Z",
+        "groups": [],
+        "user_permissions": []
+    }
+},
+{
+    "model": "auth.user",
+    "fields": {
+        "password": "pbkdf2_sha256$1500000$6RlpYily0QulCYetKlPYGr$3Nr7qvK8p070MbiSp6BEELEbYB1JI6C27h/sH194lhc=",
+        "last_login": null,
+        "is_superuser": false,
+        "username": "test",
+        "first_name": "",
+        "last_name": "",
+        "email": "test@gmail.com",
+        "is_staff": false,
+        "is_active": true,
+        "date_joined": "2026-08-10T05:18:59.376Z",
+        "groups": [],
+        "user_permissions": []
+    }
+},
+{
+    "model": "sessions.session",
+    "pk": "ycavh07m4awfggjt1a50lxqve9hyr69x",
+    "fields": {
+        "session_data": ".eJxVjEEOwiAQAP_C2RBYoLIevfuGBthFqgaS0p6MfzckPeh1ZjJvMYd9K_PeeZ0XEhcB4vTLYkhPrkPQI9R7k6nVbV2iHIk8bJe3Rvy6Hu3foIRexjabyQIm7S05ImTnrdKAZw5eO7YOAadsAI1HDVkBYma2jkBFICLx-QK2rTcB:1wtJV6:tQ_KJkyq71tVEpBZB6tY3UiXxe1z5e41yV1uzsDqOl0",
+        "expire_date": "2026-08-24T06:28:44.054Z"
+    }
+},
+{
+    "model": "issues.issue",
+    "pk": 1,
+    "fields": {
+        "project": 1,
+        "space": null,
+        "reporter": [
+            "user-68"
+        ],
+        "assignee": [
+            "user-68"
+        ],
+        "title": "test",
+        "created_at": "2026-08-10T05:54:38.983Z",
+        "details": "test",
+        "label": "test",
+        "type": "BU",
+        "status": "CL",
+        "priority": "ME",
+        "epic": null,
+        "sprint": null,
+        "start_date": null,
+        "due_date": null
+    }
+},
+{
+    "model": "issues.issue",
+    "pk": 2,
+    "fields": {
+        "project": 1,
+        "space": null,
+        "reporter": [
+            "test"
+        ],
+        "assignee": null,
+        "title": "test",
+        "created_at": "2026-08-10T05:47:01.157Z",
+        "details": "Created from Timeline view.",
+        "label": "",
+        "type": "EP",
+        "status": "OP",
+        "priority": "ME",
+        "epic": null,
+        "sprint": null,
+        "start_date": null,
+        "due_date": null
+    }
+},
+{
+    "model": "issues.issue",
+    "pk": 3,
+    "fields": {
+        "project": 1,
+        "space": null,
+        "reporter": [
+            "test"
+        ],
+        "assignee": [
+            "admin"
+        ],
+        "title": "testing",
+        "created_at": "2026-08-10T06:51:55.620Z",
+        "details": "Created from Timeline view.",
+        "label": "test",
+        "type": "BU",
+        "status": "IN",
+        "priority": "ME",
+        "epic": 2,
+        "sprint": null,
+        "start_date": "2026-08-12",
+        "due_date": "2026-08-07"
+    }
+},
+{
+    "model": "issues.issue",
+    "pk": 4,
+    "fields": {
+        "project": 1,
+        "space": null,
+        "reporter": [
+            "test"
+        ],
+        "assignee": null,
+        "title": "setup",
+        "created_at": "2026-08-10T06:51:58.083Z",
+        "details": "Created from Timeline view.",
+        "label": "",
+        "type": "ST",
+        "status": "TE",
+        "priority": "ME",
+        "epic": 2,
+        "sprint": null,
+        "start_date": null,
+        "due_date": null
+    }
+},
+{
+    "model": "issues.issue",
+    "pk": 5,
+    "fields": {
+        "project": 1,
+        "space": null,
+        "reporter": [
+            "test"
+        ],
+        "assignee": null,
+        "title": "system",
+        "created_at": "2026-08-10T05:52:36.775Z",
+        "details": "Created from Timeline view.",
+        "label": "",
+        "type": "EP",
+        "status": "OP",
+        "priority": "ME",
+        "epic": null,
+        "sprint": null,
+        "start_date": null,
+        "due_date": null
+    }
+},
+{
+    "model": "issues.issue",
+    "pk": 6,
+    "fields": {
+        "project": 1,
+        "space": null,
+        "reporter": [
+            "test"
+        ],
+        "assignee": null,
+        "title": "Title: Terms & Conditions Link Opens Blank Screen on Partner Removal",
+        "created_at": "2026-08-10T07:40:01.041Z",
+        "details": "When removing a partner in Softcorner, clicking the Terms & Conditions link in the confirmation checkbox opens a blank screen.\n\nSteps to Reproduce:\n\nGo to Softcorner → Partners.\nSelect a partner and click Remove.\nIn the confirmation popup, click the Terms & Conditions link.\n\nActual Result:\nA blank screen is displayed.\n\nExpected Result:\nThe Terms & Conditions page should open and display the correct content.",
+        "label": "",
+        "type": "BU",
+        "status": "IN",
+        "priority": "ME",
+        "epic": 5,
+        "sprint": null,
+        "start_date": null,
+        "due_date": null
+    }
+},
+{
+    "model": "issues.issue",
+    "pk": 7,
+    "fields": {
+        "project": 1,
+        "space": null,
+        "reporter": [
+            "test"
+        ],
+        "assignee": [
+            "user-68"
+        ],
+        "title": "External Audio Continues Playing After Back Navigation from Story",
+        "created_at": "2026-08-10T06:57:02.469Z",
+        "details": "In the Story section, when external audio is added to a story and the user navigates back using the phone's back button, the audio continues playing on the Home screen.\n\nSteps to Reproduce:\n\nOpen the Story section.\nCreate/open a story and add external audio.\nPlay the story audio.\nUse the phone's Back navigation to return to Home.\n\nActual Result:\nAudio continues playing in the background on the Home screen.\n\nExpected Result:\nAudio should stop when navigating away from the Story screen.",
+        "label": "story, time, system",
+        "type": "BU",
+        "status": "OP",
+        "priority": "ME",
+        "epic": 2,
+        "sprint": null,
+        "start_date": "2026-08-12",
+        "due_date": "2026-08-18"
+    }
+},
+{
+    "model": "issues.issue",
+    "pk": 8,
+    "fields": {
+        "project": 1,
+        "space": null,
+        "reporter": [
+            "test"
+        ],
+        "assignee": [
+            "admin"
+        ],
+        "title": "fTitle: External Audio Continues Playing After Back Navigation from Story",
+        "created_at": "2026-08-10T07:00:03.430Z",
+        "details": "gfgfg",
+        "label": "",
+        "type": "BU",
+        "status": "IN",
+        "priority": "ME",
+        "epic": null,
+        "sprint": null,
+        "start_date": null,
+        "due_date": null
+    }
+},
+{
+    "model": "issues.issue",
+    "pk": 9,
+    "fields": {
+        "project": 1,
+        "space": null,
+        "reporter": [
+            "test"
+        ],
+        "assignee": [
+            "admin"
+        ],
+        "title": "Title: External Audio Continues Playing After Back Navigation from Story",
+        "created_at": "2026-08-10T07:49:29.057Z",
+        "details": "gfghg",
+        "label": "",
+        "type": "BU",
+        "status": "TE",
+        "priority": "ME",
+        "epic": null,
+        "sprint": null,
+        "start_date": null,
+        "due_date": null
+    }
+},
+{
+    "model": "issues.issue",
+    "pk": 10,
+    "fields": {
+        "project": 1,
+        "space": 2,
+        "reporter": [
+            "user-68"
+        ],
+        "assignee": [
+            "test"
+        ],
+        "title": "Verified Tick Not Showing for Verified Users",
+        "created_at": "2026-08-13T12:39:42.263Z",
+        "details": "The verified tick is not displayed next to users who are already verified in the Emilo mobile app. However, the verified tick is correctly visible for the same users on the web application.\n\nActual Result:\nVerified users do not have the verified tick displayed in the mobile app.\n\nExpected Result:\nThe verified tick should be displayed next to every verified user in the Emilo app, consistent with the web application.",
+        "label": "emilo, stage, system",
+        "type": "BU",
+        "status": "IN",
+        "priority": "ME",
+        "epic": null,
+        "sprint": null,
+        "start_date": null,
+        "due_date": null
+    }
+},
+{
+    "model": "issues.issue",
+    "pk": 11,
+    "fields": {
+        "project": 1,
+        "space": 3,
+        "reporter": [
+            "user-68"
+        ],
+        "assignee": null,
+        "title": "testing",
+        "created_at": "2026-08-13T13:30:19.171Z",
+        "details": "Created from Timeline view.",
+        "label": "",
+        "type": "EP",
+        "status": "OP",
+        "priority": "ME",
+        "epic": null,
+        "sprint": null,
+        "start_date": null,
+        "due_date": null
+    }
+},
+{
+    "model": "issues.issue",
+    "pk": 12,
+    "fields": {
+        "project": 1,
+        "space": 3,
+        "reporter": [
+            "user-68"
+        ],
+        "assignee": null,
+        "title": "Verified Tick Not Showing for Verified Users",
+        "created_at": "2026-08-13T13:39:36.444Z",
+        "details": "The verified tick is not displayed next to users who are already verified in the Emilo mobile app. However, the verified tick is correctly visible for the same users on the web application.\n\nActual Result:\nVerified users do not have the verified tick displayed in the mobile app.\n\nExpected Result:\nThe verified tick should be displayed next to every verified user in the Emilo app, consistent with the web application.",
+        "label": "",
+        "type": "BU",
+        "status": "CL",
+        "priority": "ME",
+        "epic": 11,
+        "sprint": null,
+        "start_date": "2026-08-14",
+        "due_date": "2026-08-20"
+    }
+},
+{
+    "model": "issues.issue",
+    "pk": 13,
+    "fields": {
+        "project": 1,
+        "space": 3,
+        "reporter": [
+            "user-68"
+        ],
+        "assignee": null,
+        "title": "test2",
+        "created_at": "2026-08-13T13:33:32.315Z",
+        "details": "Created from Timeline view.",
+        "label": "",
+        "type": "EP",
+        "status": "OP",
+        "priority": "ME",
+        "epic": null,
+        "sprint": null,
+        "start_date": null,
+        "due_date": null
+    }
+},
+{
+    "model": "issues.issue",
+    "pk": 14,
+    "fields": {
+        "project": 1,
+        "space": 3,
+        "reporter": [
+            "user-68"
+        ],
+        "assignee": [
+            "user-68"
+        ],
+        "title": "Date Planner – Save Button Overlap",
+        "created_at": "2026-08-13T13:38:57.392Z",
+        "details": "Description:\nWhile editing a date, the device's bottom navigation bar overlaps the Save button.\n\nExpected Result:\nThe Save button should remain fully visible with proper bottom spacing and should not be overlapped by the device's bottom bar.",
+        "label": "emilo, softcorner",
+        "type": "ST",
+        "status": "OP",
+        "priority": "CR",
+        "epic": 11,
+        "sprint": 1,
+        "start_date": "2026-08-21",
+        "due_date": "2026-08-20"
+    }
+},
+{
+    "model": "projects.project",
+    "pk": 1,
+    "fields": {
+        "name": "emilo",
+        "key": "11",
+        "description": "test",
+        "lead": [
+            "user-68"
+        ],
+        "created_at": "2026-08-10T05:17:24.141Z",
+        "members": [
+            [
+                "admin"
+            ],
+            [
+                "user-68"
+            ],
+            [
+                "test"
+            ]
+        ]
+    }
+},
+{
+    "model": "projects.joinrequest",
+    "pk": 1,
+    "fields": {
+        "project": 1,
+        "user": [
+            "test"
+        ],
+        "status": "AP",
+        "created_at": "2026-08-10T05:19:04.855Z"
+    }
+},
+{
+    "model": "projects.space",
+    "pk": 1,
+    "fields": {
+        "name": "stage",
+        "key": "1",
+        "description": "",
+        "project": 1,
+        "created_by": [
+            "user-68"
+        ],
+        "created_at": "2026-08-10T08:12:59.006Z"
+    }
+},
+{
+    "model": "projects.space",
+    "pk": 2,
+    "fields": {
+        "name": "production",
+        "key": "2",
+        "description": "",
+        "project": 1,
+        "created_by": [
+            "user-68"
+        ],
+        "created_at": "2026-08-10T08:13:50.225Z"
+    }
+},
+{
+    "model": "projects.space",
+    "pk": 3,
+    "fields": {
+        "name": "beta",
+        "key": "3",
+        "description": "",
+        "project": 1,
+        "created_by": [
+            "user-68"
+        ],
+        "created_at": "2026-08-10T08:17:26.532Z"
+    }
+},
+{
+    "model": "projects.userprofile",
+    "pk": 1,
+    "fields": {
+        "user": [
+            "test"
+        ],
+        "first_name": "Tanmay",
+        "last_name": "Sahu",
+        "job_title": "developer",
+        "department": "",
+        "bio": "",
+        "avatar_color": "#10b981",
+        "phone": "06261193015",
+        "location": "Bhatapara"
+    }
+},
+{
+    "model": "projects.userprofile",
+    "pk": 2,
+    "fields": {
+        "user": [
+            "user-68"
+        ],
+        "first_name": "",
+        "last_name": "",
+        "job_title": "",
+        "department": "",
+        "bio": "",
+        "avatar_color": "#4f46e5",
+        "phone": "",
+        "location": ""
+    }
+},
+{
+    "model": "projects.projectstatus",
+    "pk": 1,
+    "fields": {
+        "project": 1,
+        "space": null,
+        "name": "To Do",
+        "code": "OP",
+        "order": 0
+    }
+},
+{
+    "model": "projects.projectstatus",
+    "pk": 2,
+    "fields": {
+        "project": 1,
+        "space": null,
+        "name": "In Progress",
+        "code": "IN",
+        "order": 1
+    }
+},
+{
+    "model": "projects.projectstatus",
+    "pk": 3,
+    "fields": {
+        "project": 1,
+        "space": null,
+        "name": "Done / Closed",
+        "code": "CL",
+        "order": 3
+    }
+},
+{
+    "model": "projects.projectstatus",
+    "pk": 4,
+    "fields": {
+        "project": 1,
+        "space": null,
+        "name": "QA Testing",
+        "code": "TE",
+        "order": 2
+    }
+},
+{
+    "model": "projects.sprint",
+    "pk": 1,
+    "fields": {
+        "space": 3,
+        "name": "sprint1",
+        "goal": "",
+        "status": "AC",
+        "start_date": "2026-08-13",
+        "end_date": "2026-09-05",
+        "created_at": "2026-08-13T13:30:11.374Z",
+        "order": 0
+    }
+},
+{
+    "model": "sites.site",
+    "fields": {
+        "domain": "example.com",
+        "name": "example.com"
+    }
+},
+{
+    "model": "authtoken.token",
+    "pk": "62523eb9144cae3fca14fca89129501896504e9f",
+    "fields": {
+        "user": [
+            "user-68"
+        ],
+        "created": "2026-08-10T08:08:27.799Z"
+    }
+}
+]

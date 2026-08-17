@@ -7,8 +7,9 @@ import AcceptInvite from './components/AcceptInvite';
 import SpacesList from './components/SpacesList';
 import Profile from './components/Profile';
 import Recent from './components/Recent';
-import { authAPI, spaceAPI } from './api/api';
-import { LayoutGrid, FolderKanban, LogOut, Menu, X, User, BookOpen, Clock, Plus, MoreVertical } from 'lucide-react';
+import { authAPI, spaceAPI, notificationAPI, searchAPI } from './api/api';
+import { LayoutGrid, FolderKanban, LogOut, Menu, X, User, BookOpen, Clock, Plus, MoreVertical, Bell, Search, Loader2 } from 'lucide-react';
+import { requestNotificationPermission } from './firebase';
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -93,6 +94,12 @@ export default function App() {
     const handleCloseMenus = (e) => {
       if (e.target.closest('.three-dot-btn')) return;
       setActiveSidebarMenuSpaceId(null);
+      if (!e.target.closest('.notifications-menu-btn') && !e.target.closest('.notifications-popup')) {
+        setIsNotificationsOpen(false);
+      }
+      if (!e.target.closest('.search-bar-container')) {
+        setIsSearchFocused(false);
+      }
     };
     window.addEventListener('click', handleCloseMenus);
     return () => window.removeEventListener('click', handleCloseMenus);
@@ -152,6 +159,115 @@ export default function App() {
       loadSpaces();
     }
   }, [token, currentView]);
+
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+
+  const fetchNotifications = async () => {
+    try {
+      const data = await notificationAPI.getNotifications();
+      setNotifications(data.notifications);
+      setUnreadCount(data.unread_count);
+    } catch (err) {
+      console.error("Failed to load notifications", err);
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      await notificationAPI.markAsRead([], true);
+      setUnreadCount(0);
+      setNotifications(notifications.map(n => ({ ...n, is_read: true })));
+    } catch (err) {
+      console.error("Failed to mark notifications read", err);
+    }
+  };
+
+  const handleNotificationClick = async (n) => {
+    try {
+      if (!n.is_read) {
+        await notificationAPI.markAsRead([n.id]);
+        setUnreadCount(prev => Math.max(0, prev - 1));
+        setNotifications(notifications.map(item => item.id === n.id ? { ...item, is_read: true } : item));
+      }
+      setIsNotificationsOpen(false);
+      if (n.link) {
+        const boardMatch = n.link.match(/\/board\/(\d+)/);
+        const issueMatch = n.link.match(/\/issue\/(\d+)/);
+        if (boardMatch) {
+          const spaceId = parseInt(boardMatch[1]);
+          if (issueMatch) {
+            const issueNo = parseInt(issueMatch[1]);
+            handleNavigateToIssue(spaceId, issueNo);
+          } else {
+            handleNavigateToSpace(spaceId);
+          }
+        } else {
+          window.location.href = n.link;
+        }
+      }
+    } catch (err) {
+      console.error("Error handling notification click:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (token) {
+      fetchNotifications();
+      requestNotificationPermission().catch(err => console.warn(err));
+
+      const setupFCMListener = async () => {
+        const { messaging } = await import('./firebase');
+        if (messaging) {
+          const { onMessage } = await import('firebase/messaging');
+          const unsubscribe = onMessage(messaging, (payload) => {
+            console.log("Foreground message received:", payload);
+            fetchNotifications();
+            if (Notification.permission === 'granted') {
+              new Notification(payload.notification.title, {
+                body: payload.notification.body,
+                icon: '/favicon.svg'
+              });
+            }
+          });
+          return unsubscribe;
+        }
+      };
+
+      let fcmUnsubscribePromise = setupFCMListener();
+      return () => {
+        fcmUnsubscribePromise.then(unsub => {
+          if (unsub) unsub();
+        });
+      };
+    }
+  }, [token]);
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState(null);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [isSearchLoading, setIsSearchLoading] = useState(false);
+
+  useEffect(() => {
+    if (searchQuery.trim().length < 2) {
+      setSearchResults(null);
+      return;
+    }
+    const delayDebounce = setTimeout(async () => {
+      setIsSearchLoading(true);
+      try {
+        const data = await searchAPI.query(searchQuery);
+        setSearchResults(data);
+      } catch (err) {
+        console.error("Failed to fetch search results", err);
+      } finally {
+        setIsSearchLoading(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounce);
+  }, [searchQuery]);
 
   const handleLoginSuccess = (loggedInUser) => {
     setUser(loggedInUser);
@@ -526,7 +642,7 @@ export default function App() {
                 <Menu className="w-5 h-5" />
               </button>
             )}
-            <h2 className="text-sm font-bold text-[#71717a] uppercase tracking-wider">
+            <h2 className="text-sm font-bold text-[#71717a] uppercase tracking-wider hidden sm:block">
               {currentView === 'dashboard' 
                 ? 'Dashboard' 
                 : currentView === 'projects' 
@@ -537,8 +653,179 @@ export default function App() {
                 ? 'Profile Settings' 
                 : 'Space Board View'}
             </h2>
+
+            {/* Global Search Component */}
+            <div className="relative ml-8 w-64 md:w-80 search-bar-container">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-4 w-4 text-[#71717a]" />
+              </div>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setIsSearchFocused(true)}
+                placeholder="Search projects, spaces, issues..."
+                className="block w-full pl-9 pr-3 py-1.5 bg-[#131316] border border-[#202024] rounded-lg text-xs placeholder-[#52525b] text-white focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all"
+              />
+              
+              {isSearchFocused && searchQuery.trim().length >= 2 && (
+                <div className="absolute left-0 right-0 mt-2 bg-[#131316] border border-[#202024] rounded-xl shadow-2xl overflow-hidden z-50 max-h-[360px] overflow-y-auto divide-y divide-[#202024]">
+                  {isSearchLoading ? (
+                    <div className="p-4 text-center text-xs text-[#71717a] flex items-center justify-center space-x-2">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-500" />
+                      <span>Searching...</span>
+                    </div>
+                  ) : !searchResults || (searchResults.projects.length === 0 && searchResults.spaces.length === 0 && searchResults.issues.length === 0) ? (
+                    <div className="p-4 text-center text-xs text-[#71717a]">
+                      No results match "{searchQuery}"
+                    </div>
+                  ) : (
+                    <>
+                      {searchResults.projects.length > 0 && (
+                        <div className="p-2">
+                          <h4 className="text-[10px] font-bold text-[#71717a] uppercase tracking-wider px-2 py-1">Projects</h4>
+                          {searchResults.projects.map(p => (
+                            <button
+                              key={p.id}
+                              onClick={() => {
+                                setSelectedProjectId(p.id);
+                                setSelectedSpaceId(null);
+                                setCurrentView('projects');
+                                setIsSearchFocused(false);
+                                setSearchQuery('');
+                              }}
+                              className="w-full text-left px-2 py-1.5 hover:bg-[#1c1c1f] rounded-lg text-xs text-[#e4e4e7] hover:text-white transition-colors flex items-center justify-between cursor-pointer"
+                            >
+                              <span className="truncate">{p.name}</span>
+                              <span className="text-[9px] text-[#71717a] uppercase ml-2 bg-[#09090b] px-1.5 py-0.5 rounded font-mono font-semibold">{p.key}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {searchResults.spaces.length > 0 && (
+                        <div className="p-2">
+                          <h4 className="text-[10px] font-bold text-[#71717a] uppercase tracking-wider px-2 py-1">Spaces</h4>
+                          {searchResults.spaces.map(s => (
+                            <button
+                              key={s.id}
+                              onClick={() => {
+                                setSelectedProjectId(s.project_id);
+                                setSelectedSpaceId(s.id);
+                                setCurrentView('board');
+                                setIsSearchFocused(false);
+                                setSearchQuery('');
+                              }}
+                              className="w-full text-left px-2 py-1.5 hover:bg-[#1c1c1f] rounded-lg text-xs text-[#e4e4e7] hover:text-white transition-colors flex items-center justify-between cursor-pointer"
+                            >
+                              <span className="truncate">{s.name}</span>
+                              <span className="text-[9px] text-[#71717a] uppercase ml-2 bg-[#09090b] px-1.5 py-0.5 rounded font-mono font-semibold">{s.key}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {searchResults.issues.length > 0 && (
+                        <div className="p-2">
+                          <h4 className="text-[10px] font-bold text-[#71717a] uppercase tracking-wider px-2 py-1">Issues</h4>
+                          {searchResults.issues.map(i => (
+                            <button
+                              key={i.issue_no}
+                              onClick={() => {
+                                setSelectedSpaceId(i.space_id);
+                                setInitialSelectedIssueNo(i.issue_no);
+                                setCurrentView('board');
+                                setIsSearchFocused(false);
+                                setSearchQuery('');
+                              }}
+                              className="w-full text-left px-2 py-1.5 hover:bg-[#1c1c1f] rounded-lg text-xs text-[#e4e4e7] hover:text-white transition-colors flex flex-col cursor-pointer"
+                            >
+                              <div className="flex justify-between items-center w-full">
+                                <span className="truncate text-white font-medium">#{i.issue_no} - {i.title}</span>
+                                <span className="text-[9px] text-gray-500 ml-2 font-semibold truncate shrink-0">{i.space_name}</span>
+                              </div>
+                              <div className="flex items-center space-x-1.5 mt-0.5 text-[9px] text-gray-500">
+                                <span className={`uppercase font-bold ${i.status === 'CL' ? 'text-emerald-400' : 'text-gray-400'}`}>{i.status === 'OP' ? 'Open' : i.status === 'IN' ? 'In Progress' : 'Closed'}</span>
+                                <span>•</span>
+                                <span className="capitalize">{i.priority === 'LO' ? 'low' : i.priority === 'ME' ? 'medium' : i.priority === 'HI' ? 'high' : 'critical'}</span>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
           <div className="flex items-center space-x-4">
+            {/* Notification Bell Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                className="notifications-menu-btn relative p-2 text-gray-400 hover:text-white hover:bg-[#131316] rounded-lg border border-transparent hover:border-[#202024] transition-all cursor-pointer focus:outline-none flex items-center justify-center"
+              >
+                <Bell className="w-4 h-4 text-[#a1a1aa] hover:text-white" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-indigo-500 rounded-full ring-1 ring-[#09090b]"></span>
+                )}
+              </button>
+
+              {isNotificationsOpen && (
+                <div 
+                  className="notifications-popup absolute right-0 mt-2 bg-[#131316] border border-[#202024] rounded-xl shadow-2xl w-[360px] text-[#f3f4f6] z-50 animate-fadeIn"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <h3 className="text-xs font-bold text-[#71717a] uppercase tracking-wider mb-1 flex items-center justify-between border-b border-[#202024] p-3 pb-2.5">
+                    <span>Notifications ({unreadCount} unread)</span>
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={handleMarkAllRead}
+                        className="text-indigo-400 hover:text-indigo-300 font-bold text-[10px] cursor-pointer focus:outline-none"
+                      >
+                        Mark all as read
+                      </button>
+                    )}
+                  </h3>
+                  <div className="max-h-[300px] overflow-y-auto divide-y divide-[#1a1a1e]">
+                    {notifications.length === 0 ? (
+                      <div className="p-4 text-center text-xs text-gray-500">
+                        No notifications yet.
+                      </div>
+                    ) : (
+                      notifications.map((n) => (
+                        <div
+                          key={n.id}
+                          onClick={() => handleNotificationClick(n)}
+                          className={`p-3 text-left transition-colors cursor-pointer hover:bg-[#18181c] ${
+                            !n.is_read ? 'bg-indigo-950/10' : ''
+                          }`}
+                        >
+                          <div className="flex justify-between items-start space-x-2">
+                            <span className="text-xs font-bold text-white leading-tight">
+                              {n.title}
+                            </span>
+                            {!n.is_read && (
+                              <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full shrink-0 mt-1"></span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-gray-400 mt-1 leading-snug">
+                            {n.description}
+                          </p>
+                          <div className="flex items-center space-x-1.5 mt-1.5 text-[9px] text-gray-500 font-medium">
+                            <span>by {n.actor}</span>
+                            <span>•</span>
+                            <span>{new Date(n.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <button 
               onClick={() => setCurrentView('profile')}
               className="flex items-center space-x-2 text-xs font-medium text-[#a1a1aa] bg-[#131316] hover:bg-[#18181c] hover:text-white px-2.5 py-1.5 border border-[#202024] rounded-lg transition-colors cursor-pointer"

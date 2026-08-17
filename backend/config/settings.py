@@ -29,12 +29,12 @@ STATIC_DIR = os.path.join(BASE_DIR,"static")
 # See https://docs.djangoproject.com/en/3.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = '1siixyulfr26kj)-nubqql6w_9qsn$&2+^4li6b)l*9=2$6%k)'
+SECRET_KEY = env.str('SECRET_KEY', default='1siixyulfr26kj)-nubqql6w_9qsn$&2+^4li6b)l*9=2$6%k)')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env.bool('DEBUG', default=True)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=[])
 
 
 # Application definition
@@ -45,10 +45,13 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+    'cloudinary_storage',
     'django.contrib.staticfiles',
+    'cloudinary',
     'comments',
     'issues',
     'projects',
+    'notifications',
     'crispy_forms',
     'django.contrib.sites',
     'allauth',
@@ -74,7 +77,7 @@ MIDDLEWARE = [
     'allauth.account.middleware.AccountMiddleware',
 ]
 
-ROOT_URLCONF = 'jira_clone.urls'
+ROOT_URLCONF = 'config.urls'
 
 TEMPLATES = [
     {
@@ -92,7 +95,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'jira_clone.wsgi.application'
+WSGI_APPLICATION = 'config.wsgi.application'
 
 
 # Database
@@ -103,7 +106,7 @@ if env.str('DATABASE_URL', default=''):
         'default': env.db_url('DATABASE_URL')
     }
 else:
-    db_engine = env.str('DB_ENGINE', default='sqlite3')
+    db_engine = env.str('DB_ENGINE', default='postgresql')
     if db_engine == 'mysql':
         DATABASES = {
             'default': {
@@ -121,8 +124,12 @@ else:
     else:
         DATABASES = {
             'default': {
-                'ENGINE': 'django.db.backends.sqlite3',
-                'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+                'ENGINE': 'django.db.backends.postgresql',
+                'NAME': env.str('DB_NAME', default='task_manager'),
+                'USER': env.str('DB_USER', default='postgres'),
+                'PASSWORD': env.str('DB_PASSWORD', default=''),
+                'HOST': env.str('DB_HOST', default='127.0.0.1'),
+                'PORT': env.str('DB_PORT', default='5432'),
             }
         }
 
@@ -197,27 +204,48 @@ REST_FRAMEWORK = {
     ],
 }
 
-CORS_ALLOWED_ORIGINS = [
+CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=[
     'http://localhost:5173',
     'http://127.0.0.1:5173',
     'http://localhost:5174',
     'http://127.0.0.1:5174',
     'http://localhost:5175',
     'http://127.0.0.1:5175',
-]
+])
 CORS_ALLOW_CREDENTIALS = True
 
 # Email Configuration
 # By default in local development, we print emails to the console/terminal.
 # This prevents need for configuring real accounts or credentials to test features.
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+EMAIL_BACKEND = env.str('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = env.str('EMAIL_HOST', default='smtp.gmail.com')
+EMAIL_PORT = env.int('EMAIL_PORT', default=587)
+EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
+EMAIL_HOST_USER = env.str('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = env.str('EMAIL_HOST_PASSWORD', default='')
+DEFAULT_FROM_EMAIL = env.str('DEFAULT_FROM_EMAIL', default='JiraClone <your-email@gmail.com>')
 
-# If you want to send actual emails using Gmail, uncomment the settings below
-# and replace placeholders with your actual Gmail account and App Password:
-# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-# EMAIL_HOST = 'smtp.gmail.com'
-# EMAIL_PORT = 587
-# EMAIL_USE_TLS = True
-# EMAIL_HOST_USER = 'your-email@gmail.com'
-# EMAIL_HOST_PASSWORD = 'your-gmail-app-password'
-# DEFAULT_FROM_EMAIL = 'JiraClone <your-email@gmail.com>'
+# Firebase Admin SDK Initialization
+import firebase_admin
+from firebase_admin import credentials
+
+firebase_creds_path = env.str('FIREBASE_CREDENTIALS_PATH', default='')
+if firebase_creds_path:
+    if not os.path.isabs(firebase_creds_path):
+        firebase_creds_path = os.path.join(BASE_DIR, firebase_creds_path)
+    if os.path.exists(firebase_creds_path):
+        try:
+            cred = credentials.Certificate(firebase_creds_path)
+            firebase_admin.initialize_app(cred)
+        except Exception as e:
+            print(f"Error initializing Firebase Admin SDK: {e}")
+    else:
+        print(f"Firebase credentials file not found at: {firebase_creds_path}")
+
+# Cloudinary Config
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': env.str('CLOUDINARY_CLOUD_NAME', default=''),
+    'API_KEY': env.str('CLOUDINARY_API_KEY', default=''),
+    'API_SECRET': env.str('CLOUDINARY_API_SECRET', default=''),
+}
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Loader2 } from 'lucide-react';
+import { Spinner } from './ui/spinner';
 
 export default function Loader({ text = "Loading...", fullScreen = false }) {
   const containerClass = fullScreen 
@@ -11,9 +11,7 @@ export default function Loader({ text = "Loading...", fullScreen = false }) {
       <div className="flex flex-col items-center p-6 bg-[#0c0c0e]/95 border border-[#202024] rounded-2xl shadow-2xl max-w-[280px]">
         {/* Modern Spinning Ring */}
         <div className="relative w-12 h-12 flex items-center justify-center">
-          <div className="absolute inset-0 rounded-full border-2 border-indigo-500/10"></div>
-          <div className="absolute inset-0 rounded-full border-2 border-t-indigo-500 animate-spin"></div>
-          <Loader2 className="w-5 h-5 text-indigo-400 animate-pulse" />
+          <Spinner className="w-10 h-10 text-indigo-500" speed="normal" />
         </div>
         <p className="mt-4 text-xs font-semibold text-[#e4e4e7] animate-pulse tracking-wider text-center">
           {text}
