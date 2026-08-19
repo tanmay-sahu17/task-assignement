@@ -88,7 +88,7 @@ def dashboard_analytics_api(request):
         issues_qs = issues_qs.filter(space__project_id=project_id)
         
     # 2. Status Split Data
-    status_counts = issues_qs.values('status').annotate(count=Count('id'))
+    status_counts = issues_qs.values('status').annotate(count=Count('issue_no'))
     status_data = []
     status_map = {
         'OP': 'Open',
@@ -102,7 +102,7 @@ def dashboard_analytics_api(request):
         })
         
     # 3. Priority Split Data
-    priority_counts = issues_qs.values('priority').annotate(count=Count('id'))
+    priority_counts = issues_qs.values('priority').annotate(count=Count('issue_no'))
     priority_data = []
     priority_map = {
         'LO': 'Low',

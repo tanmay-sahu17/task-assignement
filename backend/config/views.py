@@ -57,7 +57,44 @@ def me_api(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def users_list_api(request):
-    users = User.objects.all().values('id', 'username', 'email')
+    from django.db.models import Q
+    space_id = request.query_params.get('space_id')
+    project_id = request.query_params.get('project_id')
+    
+    if space_id:
+        from projects.models import Space
+        try:
+            space = Space.objects.get(id=space_id)
+            project_id = space.project_id
+        except Space.DoesNotExist:
+            pass
+            
+    if project_id:
+        from projects.models import Project, Invitation, JoinRequest
+        try:
+            project = Project.objects.get(id=project_id)
+        except Project.DoesNotExist:
+            return Response({'error': 'Project not found.'}, status=status.HTTP_404_NOT_FOUND)
+            
+        # 1. Already members of this project
+        member_ids = list(project.members.all().values_list('id', flat=True))
+        
+        # 2. Users invited to this project or workspace
+        invited_emails = list(Invitation.objects.filter(Q(project=project) | Q(project__isnull=True)).values_list('email', flat=True))
+        invited_user_ids = list(User.objects.filter(email__in=invited_emails).values_list('id', flat=True))
+        
+        # 3. Users who have requested to join this project
+        requested_user_ids = list(JoinRequest.objects.filter(project=project).values_list('user_id', flat=True))
+        
+        # Include project lead
+        lead_id = [project.lead.id] if project.lead else []
+        
+        allowed_user_ids = set(member_ids + invited_user_ids + requested_user_ids + lead_id)
+        
+        users = User.objects.filter(id__in=allowed_user_ids).values('id', 'username', 'email')
+    else:
+        users = User.objects.all().values('id', 'username', 'email')
+        
     return Response(list(users))
 
 @api_view(['POST'])
@@ -66,6 +103,7 @@ def register_api(request):
     username = request.data.get('username')
     email = request.data.get('email')
     password = request.data.get('password')
+    is_admin = request.data.get('is_admin', False)
     
     if not username or not password or not email:
         return Response({'error': 'Please provide username, email, and password.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -77,6 +115,11 @@ def register_api(request):
         return Response({'error': 'Email already registered.'}, status=status.HTTP_400_BAD_REQUEST)
         
     user = User.objects.create_user(username=username, email=email, password=password)
+    if is_admin:
+        user.is_superuser = True
+        user.is_staff = True
+        user.save()
+        
     token, created = Token.objects.get_or_create(user=user)
     
     return Response({
@@ -85,6 +128,7 @@ def register_api(request):
             'id': user.id,
             'username': user.username,
             'email': user.email,
+            'is_superuser': user.is_superuser,
             'avatar_color': user.profile.avatar_color if hasattr(user, 'profile') else '#4f46e5',
         }
     }, status=status.HTTP_201_CREATED)

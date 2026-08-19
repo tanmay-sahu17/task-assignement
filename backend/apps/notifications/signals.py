@@ -25,34 +25,56 @@ def issue_post_save_receiver(sender, instance, created, raw=False, **kwargs):
         return
         
     link = f"/board/{instance.space.id}/issue/{instance.issue_no}" if instance.space else ""
+    project = instance.project
     
     if created:
-        # Notify Assignee of new task assignment
-        if instance.assignee:
-            send_push_notification(
-                user=instance.assignee,
-                title="New Task Assigned",
-                body=f"You have been assigned: #{instance.issue_no} - {instance.title}",
-                link=link,
-                actor=instance.reporter
-            )
+        # Notify all members of the project about the new task
+        if project:
+            for member in project.members.all():
+                # Notify assignee with customized assignment text, others with creation text
+                if instance.assignee and member == instance.assignee:
+                    title = "New Task Assigned"
+                    body = f"You have been assigned: #{instance.issue_no} - {instance.title}"
+                else:
+                    title = "New Task Created"
+                    body = f"#{instance.issue_no} was created: {instance.title}"
+                    
+                # Exclude the reporter from receiving "New Task Created"
+                if member == instance.reporter and not (instance.assignee and member == instance.assignee):
+                    continue
+                    
+                send_push_notification(
+                    user=member,
+                    title=title,
+                    body=body,
+                    link=link,
+                    actor=instance.reporter
+                )
     else:
         # 1. Assignee changed notification
         orig_assignee = getattr(instance, '_original_assignee', None)
         if instance.assignee and instance.assignee != orig_assignee:
-            send_push_notification(
-                user=instance.assignee,
-                title="Task Assigned",
-                body=f"You have been assigned: #{instance.issue_no} - {instance.title}",
-                link=link,
-                actor=instance.reporter
-            )
+            if project:
+                for member in project.members.all():
+                    if member == instance.assignee:
+                        title = "Task Assigned"
+                        body = f"You have been assigned: #{instance.issue_no} - {instance.title}"
+                    else:
+                        title = "Task Assignment Updated"
+                        body = f"#{instance.issue_no} was assigned to {instance.assignee.username}"
+                        
+                    send_push_notification(
+                        user=member,
+                        title=title,
+                        body=body,
+                        link=link,
+                        actor=instance.reporter
+                    )
             
         # 2. Status changed notification
         orig_status = getattr(instance, '_original_status', None)
         if instance.status != orig_status:
             status_display = instance.status
-            # Map status codes to names if possible
             if instance.status == 'OP':
                 status_display = 'Open'
             elif instance.status == 'IN':
@@ -67,25 +89,16 @@ def issue_post_save_receiver(sender, instance, created, raw=False, **kwargs):
                 orig_status_display = 'In Progress'
             elif orig_status == 'CL':
                 orig_status_display = 'Closed'
-
-            # Notify Assignee
-            if instance.assignee:
-                send_push_notification(
-                    user=instance.assignee,
-                    title="Task Status Updated",
-                    body=f"Task #{instance.issue_no} status changed from '{orig_status_display}' to '{status_display}'",
-                    link=link,
-                    actor=None
-                )
-            # Notify Reporter
-            if instance.reporter and instance.reporter != instance.assignee:
-                send_push_notification(
-                    user=instance.reporter,
-                    title="Task Status Updated",
-                    body=f"Task #{instance.issue_no} status changed from '{orig_status_display}' to '{status_display}'",
-                    link=link,
-                    actor=None
-                )
+                
+            if project:
+                for member in project.members.all():
+                    send_push_notification(
+                        user=member,
+                        title="Task Status Updated",
+                        body=f"Task #{instance.issue_no} status changed from '{orig_status_display}' to '{status_display}'",
+                        link=link,
+                        actor=None
+                    )
 
 
 @receiver(post_save, sender=Comment)
@@ -99,23 +112,16 @@ def comment_notification_receiver(sender, instance, created, raw=False, **kwargs
         
     link = f"/board/{issue.space.id}/issue/{issue.issue_no}" if issue.space else ""
     comment_author = instance.user
+    project = issue.project
     
-    # Notify Assignee of the task
-    if issue.assignee and issue.assignee != comment_author:
-        send_push_notification(
-            user=issue.assignee,
-            title="New Comment on Task",
-            body=f"{comment_author.username} commented on #{issue.issue_no}: '{instance.content[:30]}...'",
-            link=link,
-            actor=comment_author
-        )
-        
-    # Notify Reporter of the task
-    if issue.reporter and issue.reporter != comment_author and issue.reporter != issue.assignee:
-        send_push_notification(
-            user=issue.reporter,
-            title="New Comment on Task",
-            body=f"{comment_author.username} commented on #{issue.issue_no}: '{instance.content[:30]}...'",
-            link=link,
-            actor=comment_author
-        )
+    if project:
+        for member in project.members.all():
+            if member == comment_author:
+                continue
+            send_push_notification(
+                user=member,
+                title="New Comment on Task",
+                body=f"{comment_author.username} commented on #{issue.issue_no}: '{instance.content[:30]}...'",
+                link=link,
+                actor=comment_author
+            )

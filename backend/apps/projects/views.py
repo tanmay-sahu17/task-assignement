@@ -17,9 +17,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_superuser:
-            return Project.objects.all().order_by('-created_at')
-        return Project.objects.filter(members=user).order_by('-created_at')
+        from django.db.models import Q
+        return Project.objects.filter(Q(lead=user) | Q(members=user)).distinct().order_by('-created_at')
 
     def create(self, request, *args, **kwargs):
         # Only superusers/workspace admins can create projects
@@ -109,10 +108,39 @@ class InvitationViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        from django.db.models import Q
         if user.is_superuser:
             return Invitation.objects.all().order_by('-created_at')
-        # Project leads see invitations for projects they lead
-        return Invitation.objects.filter(project__lead=user).order_by('-created_at')
+        # Project leads see invitations for projects they lead, users see invitations sent to them
+        return Invitation.objects.filter(Q(project__lead=user) | Q(email=user.email)).distinct().order_by('-created_at')
+
+    @action(detail=True, methods=['post'])
+    def accept_invite(self, request, pk=None):
+        invite = self.get_object()
+        if invite.email != request.user.email:
+            raise PermissionDenied("This invitation is not for you.")
+            
+        if invite.accepted:
+            return Response({'error': 'Invitation already accepted.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        if invite.project:
+            invite.project.members.add(request.user)
+            
+        invite.accepted = True
+        invite.save()
+        return Response({'message': 'Invitation accepted successfully.'}, status=status.HTTP_200_OK)
+        
+    @action(detail=True, methods=['post'])
+    def decline_invite(self, request, pk=None):
+        invite = self.get_object()
+        if invite.email != request.user.email:
+            raise PermissionDenied("This invitation is not for you.")
+            
+        if invite.accepted:
+            return Response({'error': 'Invitation already accepted.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        invite.delete()
+        return Response({'message': 'Invitation declined successfully.'}, status=status.HTTP_200_OK)
 
     def perform_create(self, serializer):
         user = self.request.user
@@ -125,6 +153,24 @@ class InvitationViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("Only Workspace Admins can send workspace-level invites.")
             
         invite = serializer.save(invited_by=user)
+
+        # Check if user already exists, and notify them in-app
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        existing_user = User.objects.filter(email=invite.email).first()
+        if existing_user:
+            from notifications.helpers import send_push_notification
+            project_name = invite.project.name if invite.project else "Workspace"
+            title = "New Project Invitation" if invite.project else "New Workspace Invitation"
+            body = f"You have been invited to join '{project_name}' by {user.username}. Click to review."
+            link = "/projects" # Send them to projects tab
+            send_push_notification(
+                user=existing_user,
+                title=title,
+                body=body,
+                link=link,
+                actor=user
+            )
 
         # Trigger Django send_mail
         from django.core.mail import send_mail
@@ -268,20 +314,17 @@ class SpaceViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_superuser:
-            return Space.objects.all().order_by('name')
-        
         from django.db.models import Q
         return Space.objects.filter(
-            Q(project__isnull=True) | Q(project__members=user)
+            Q(project__isnull=True) | Q(project__members=user) | Q(project__lead=user)
         ).distinct().order_by('name')
 
     def perform_create(self, serializer):
         user = self.request.user
         project = serializer.validated_data.get('project')
         
-        if project and not project.members.filter(id=user.id).exists() and not user.is_superuser:
-            raise PermissionDenied("You are not a member of this project, so you cannot create a Space for it.")
+        if project and not project.members.filter(id=user.id).exists() and project.lead != user:
+            raise PermissionDenied("You are not a member or lead of this project, so you cannot create a Space for it.")
             
         serializer.save(created_by=user)
 
@@ -345,19 +388,16 @@ class PageViewSet(viewsets.ModelViewSet):
         if space_id:
             queryset = queryset.filter(space_id=space_id)
             
-        if user.is_superuser:
-            return queryset.order_by('-updated_at')
-            
         from django.db.models import Q
         return queryset.filter(
-            Q(space__project__isnull=True) | Q(space__project__members=user)
+            Q(space__project__isnull=True) | Q(space__project__members=user) | Q(space__project__lead=user)
         ).distinct().order_by('-updated_at')
 
     def perform_create(self, serializer):
         user = self.request.user
         space = serializer.validated_data.get('space')
         
-        if space.project and not space.project.members.filter(id=user.id).exists() and not user.is_superuser:
+        if space.project and not space.project.members.filter(id=user.id).exists() and space.project.lead != user:
             raise PermissionDenied("You do not have access to this Space.")
             
         serializer.save(created_by=user)
@@ -377,18 +417,15 @@ class SprintViewSet(viewsets.ModelViewSet):
         if space_id:
             queryset = queryset.filter(space_id=space_id)
 
-        if user.is_superuser:
-            return queryset.order_by('order', 'created_at')
-
         from django.db.models import Q
         return queryset.filter(
-            Q(space__project__isnull=True) | Q(space__project__members=user)
+            Q(space__project__isnull=True) | Q(space__project__members=user) | Q(space__project__lead=user)
         ).distinct().order_by('order', 'created_at')
 
     def perform_create(self, serializer):
         user = self.request.user
         space = serializer.validated_data.get('space')
-        if space.project and not space.project.members.filter(id=user.id).exists() and not user.is_superuser:
+        if space.project and not space.project.members.filter(id=user.id).exists() and space.project.lead != user:
             raise PermissionDenied("You do not have access to this Space.")
         serializer.save()
 

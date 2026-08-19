@@ -13,9 +13,9 @@ class IssueViewSet(viewsets.ModelViewSet):
         user = self.request.user
         queryset = self.queryset
         
-        # Enforce project membership restriction
-        if not user.is_superuser:
-            queryset = queryset.filter(project__members=user)
+        # Enforce project membership/lead restriction
+        from django.db.models import Q
+        queryset = queryset.filter(Q(project__members=user) | Q(project__lead=user)).distinct()
             
         project_id = self.request.query_params.get('project')
         space_id = self.request.query_params.get('space')
@@ -42,6 +42,15 @@ class IssueViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(type=type_param)
         if priority_param:
             queryset = queryset.filter(priority=priority_param)
+            
+        recent_param = self.request.query_params.get('recent')
+        if recent_param == 'true':
+            from django.db.models import Q
+            queryset = queryset.filter(
+                Q(assignee=user) | 
+                Q(reporter=user) | 
+                Q(comments__user=user)
+            ).distinct()
             
         return queryset
 

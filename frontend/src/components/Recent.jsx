@@ -11,7 +11,7 @@ export default function Recent({ onNavigateToIssue }) {
   useEffect(() => {
     async function fetchRecentIssues() {
       try {
-        const data = await issueAPI.getAll();
+        const data = await issueAPI.getAll({ recent: 'true' });
         setIssues(data);
       } catch (err) {
         console.error("Failed to fetch recent issues", err);

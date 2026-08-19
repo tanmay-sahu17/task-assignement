@@ -15,6 +15,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [currentView, setCurrentView] = useState('dashboard'); // 'dashboard', 'projects', 'board', 'spaces', 'profile'
+  const [previousView, setPreviousView] = useState('dashboard');
   const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [selectedSpaceId, setSelectedSpaceId] = useState(null);
   const [initialSelectedIssueNo, setInitialSelectedIssueNo] = useState(null);
@@ -288,6 +289,9 @@ export default function App() {
   };
 
   const handleNavigateToProject = async (id) => {
+    if (currentView !== 'board') {
+      setPreviousView(currentView);
+    }
     setSelectedProjectId(id);
     try {
       const spaceList = await spaceAPI.getAll();
@@ -312,6 +316,9 @@ export default function App() {
   };
 
   const handleNavigateToSpace = (id) => {
+    if (currentView !== 'board') {
+      setPreviousView(currentView);
+    }
     setSelectedSpaceId(id);
     setInitialSelectedIssueNo(null);
     setCurrentView('board');
@@ -323,6 +330,9 @@ export default function App() {
 
 
   const handleNavigateToIssue = (spaceId, issueNo) => {
+    if (currentView !== 'board') {
+      setPreviousView(currentView);
+    }
     setSelectedSpaceId(spaceId);
     setInitialSelectedIssueNo(issueNo);
     setCurrentView('board');
@@ -372,7 +382,10 @@ export default function App() {
           <Board
             spaceId={selectedSpaceId}
             currentUser={user}
-            onBack={() => setCurrentView('spaces')}
+            onBack={() => {
+              const destination = ['dashboard', 'projects', 'spaces'].includes(previousView) ? previousView : 'projects';
+              setCurrentView(destination);
+            }}
             initialSelectedIssueNo={initialSelectedIssueNo}
             onClearInitialSelectedIssue={() => setInitialSelectedIssueNo(null)}
           />
@@ -416,7 +429,7 @@ export default function App() {
               </div>
               {isSidebarOpen && (
                 <span className="font-bold text-white tracking-tight text-sm truncate">
-                  JiraClone Workspace
+                   Workspace
                 </span>
               )}
             </div>
@@ -710,6 +723,9 @@ export default function App() {
                             <button
                               key={s.id}
                               onClick={() => {
+                                if (currentView !== 'board') {
+                                  setPreviousView(currentView);
+                                }
                                 setSelectedProjectId(s.project_id);
                                 setSelectedSpaceId(s.id);
                                 setCurrentView('board');
@@ -732,6 +748,9 @@ export default function App() {
                             <button
                               key={i.issue_no}
                               onClick={() => {
+                                if (currentView !== 'board') {
+                                  setPreviousView(currentView);
+                                }
                                 setSelectedSpaceId(i.space_id);
                                 setInitialSelectedIssueNo(i.issue_no);
                                 setCurrentView('board');

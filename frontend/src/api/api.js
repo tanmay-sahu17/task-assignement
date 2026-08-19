@@ -49,8 +49,8 @@ export const authAPI = {
     }
     return response.data;
   },
-  register: async (username, email, password) => {
-    const response = await api.post('auth/register/', { username, email, password });
+  register: async (username, email, password, isAdmin = false) => {
+    const response = await api.post('auth/register/', { username, email, password, is_admin: isAdmin });
     if (response.data.token) {
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
@@ -77,8 +77,8 @@ export const authAPI = {
     const response = await api.get('auth/me/');
     return response.data;
   },
-  getUsers: async () => {
-    const response = await api.get('users/');
+  getUsers: async (params = {}) => {
+    const response = await api.get('users/', { params });
     return response.data;
   },
   getProfile: async () => {
@@ -180,6 +180,14 @@ export const invitationAPI = {
   },
   accept: async (token, username, password) => {
     const response = await api.post('invitations/accept/', { token, username, password });
+    return response.data;
+  },
+  acceptInvite: async (id) => {
+    const response = await api.post(`invitations/${id}/accept_invite/`);
+    return response.data;
+  },
+  declineInvite: async (id) => {
+    const response = await api.post(`invitations/${id}/decline_invite/`);
     return response.data;
   },
 };

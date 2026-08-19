@@ -26,3 +26,6 @@ yarn-error.log*
 .vscode/
 .idea/
 .gemini/
+
+# Firebase Admin SDK Credentials
+backend/*firebase-adminsdk*.json

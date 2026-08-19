@@ -46,12 +46,12 @@ export default function Projects({ onNavigateToProject, currentUser }) {
         setLead(userData[0].id);
       }
 
+      const invitesData = await invitationAPI.getAll().catch(() => []);
+      setInvitations(invitesData);
+
       if (!currentUser.is_superuser) {
         const joinableData = await projectAPI.getJoinable();
         setJoinableProjects(joinableData);
-      } else {
-        const invitesData = await invitationAPI.getAll();
-        setInvitations(invitesData);
       }
     } catch (err) {
       console.error('Failed to load projects metadata', err);
@@ -127,6 +127,33 @@ export default function Projects({ onNavigateToProject, currentUser }) {
     }
   };
 
+  const handleAcceptMyInvite = async (id) => {
+    try {
+      await invitationAPI.acceptInvite(id);
+      await loadData();
+      alert("Invitation accepted successfully!");
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.error || "Failed to accept invitation.");
+    }
+  };
+
+  const handleDeclineMyInvite = async (id) => {
+    window.showConfirm(
+      "Are you sure you want to decline this invitation?",
+      async () => {
+        try {
+          await invitationAPI.declineInvite(id);
+          await loadData();
+        } catch (err) {
+          console.error(err);
+          alert("Failed to decline invitation.");
+        }
+      },
+      "Decline Invitation"
+    );
+  };
+
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
     alert('Link copied to clipboard!');
@@ -196,16 +223,14 @@ export default function Projects({ onNavigateToProject, currentUser }) {
           )}
         </button>
 
-        {currentUser.is_superuser && (
-          <button
-            onClick={() => setActiveTab('invites')}
-            className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
-              activeTab === 'invites' ? 'border-indigo-600 text-indigo-400' : 'border-transparent text-[#71717a] hover:text-[#a1a1aa]'
-            }`}
-          >
-            Workspace Invites ({invitations.length})
-          </button>
-        )}
+        <button
+          onClick={() => setActiveTab('invites')}
+          className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
+            activeTab === 'invites' ? 'border-indigo-600 text-indigo-400' : 'border-transparent text-[#71717a] hover:text-[#a1a1aa]'
+          }`}
+        >
+          {currentUser.is_superuser ? 'Workspace Invites' : 'My Invitations'} ({invitations.filter(i => !i.accepted).length})
+        </button>
       </div>
 
       {/* ACTIVE PROJECTS TAB */}
@@ -494,7 +519,7 @@ export default function Projects({ onNavigateToProject, currentUser }) {
                             onClick={() => copyToClipboard(link)}
                             className="p-1.5 hover:bg-[#18181c] border border-[#202024] rounded text-indigo-400 hover:text-indigo-300 flex items-center text-xs font-semibold cursor-pointer"
                           >
-                            <Copy className="w-3.5 h-3.5 mr-1" /> Copy Link
+                            <Copy className="w-4 h-4" />
                           </button>
                         )}
                       </div>
@@ -503,6 +528,47 @@ export default function Projects({ onNavigateToProject, currentUser }) {
                 })
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* USER RECEIVED PENDING INVITATIONS TAB */}
+      {activeTab === 'invites' && !currentUser.is_superuser && (
+        <div className="max-w-3xl mx-auto bg-[#131316] border border-[#202024] rounded-xl shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-[#202024] bg-[#18181c]">
+            <h3 className="font-bold text-white text-sm">My Project & Workspace Invitations</h3>
+          </div>
+          <div className="divide-y divide-[#202024]">
+            {invitations.filter(i => !i.accepted).length === 0 ? (
+              <p className="p-12 text-xs text-[#71717a] italic text-center">No pending invitations.</p>
+            ) : (
+              invitations.filter(i => !i.accepted).map((invite) => (
+                <div key={invite.id} className="p-5 flex items-center justify-between flex-wrap gap-4">
+                  <div>
+                    <h4 className="text-sm font-bold text-white">
+                      Invitation to join {invite.project_details?.name ? `the "${invite.project_details.name}" project` : 'Workspace'}
+                    </h4>
+                    <p className="text-xs text-[#71717a] mt-1">
+                      Invited by <span className="font-semibold text-gray-300">{invite.invited_by_details?.username || 'Admin'}</span> • {new Date(invite.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <button
+                      onClick={() => handleAcceptMyInvite(invite.id)}
+                      className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all cursor-pointer focus:outline-none"
+                    >
+                      Accept
+                    </button>
+                    <button
+                      onClick={() => handleDeclineMyInvite(invite.id)}
+                      className="px-3.5 py-1.5 border border-red-900/60 hover:bg-red-950/20 text-red-400 rounded-lg text-xs font-bold transition-all cursor-pointer focus:outline-none"
+                    >
+                      Decline
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}

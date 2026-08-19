@@ -141,21 +141,26 @@ export default function Board({ spaceId, onBack, currentUser, initialSelectedIss
   };
 
   const handleDeletePage = async (pageId) => {
-    if (!window.confirm('Delete this page permanently?')) return;
-    try {
-      await pageAPI.delete(pageId);
-      const remaining = pages.filter(p => p.id !== pageId);
-      setPages(remaining);
-      if (selectedPage?.id === pageId) {
-        if (remaining.length > 0) {
-          handleSelectPage(remaining[0]);
-        } else {
-          setSelectedPage(null);
+    window.showConfirm(
+      'Delete this page permanently?',
+      async () => {
+        try {
+          await pageAPI.delete(pageId);
+          const remaining = pages.filter(p => p.id !== pageId);
+          setPages(remaining);
+          if (selectedPage?.id === pageId) {
+            if (remaining.length > 0) {
+              handleSelectPage(remaining[0]);
+            } else {
+              setSelectedPage(null);
+            }
+          }
+        } catch (err) {
+          alert('Failed to delete page.');
         }
-      }
-    } catch (err) {
-      alert('Failed to delete page.');
-    }
+      },
+      'Delete Page'
+    );
   };
 
   // Members modal form states
@@ -201,7 +206,7 @@ export default function Board({ spaceId, onBack, currentUser, initialSelectedIss
       const [spaceData, sprintsData, userData] = await Promise.all([
         spaceAPI.getOne(spaceId),
         sprintAPI.getAll({ space: spaceId }),
-        authAPI.getUsers(),
+        authAPI.getUsers({ space_id: spaceId }),
       ]);
       setSpace(spaceData);
       setSprints(sprintsData);
@@ -433,16 +438,21 @@ export default function Board({ spaceId, onBack, currentUser, initialSelectedIss
   };
 
   const handleDeleteIssueLink = async (linkId) => {
-    if (!window.confirm("Are you sure you want to remove this dependency link?")) return;
-    try {
-      await issueLinkAPI.delete(linkId);
-      const updatedIssue = await issueAPI.getOne(selectedIssue.issue_no);
-      setSelectedIssue(updatedIssue);
-      const freshIssues = await issueAPI.getAll({ space: spaceId });
-      setIssues(freshIssues);
-    } catch (err) {
-      console.error("Failed to delete issue link:", err);
-    }
+    window.showConfirm(
+      "Are you sure you want to remove this dependency link?",
+      async () => {
+        try {
+          await issueLinkAPI.delete(linkId);
+          const updatedIssue = await issueAPI.getOne(selectedIssue.issue_no);
+          setSelectedIssue(updatedIssue);
+          const freshIssues = await issueAPI.getAll({ space: spaceId });
+          setIssues(freshIssues);
+        } catch (err) {
+          console.error("Failed to delete issue link:", err);
+        }
+      },
+      "Remove Dependency Link"
+    );
   };
 
   const handleUploadFile = async (e) => {
@@ -464,16 +474,21 @@ export default function Board({ spaceId, onBack, currentUser, initialSelectedIss
   };
 
   const handleDeleteAttachment = async (attachmentId) => {
-    if (!window.confirm("Are you sure you want to delete this attachment?")) return;
-    try {
-      await attachmentAPI.delete(attachmentId);
-      const updatedIssue = await issueAPI.getOne(selectedIssue.issue_no);
-      setSelectedIssue(updatedIssue);
-      const freshIssues = await issueAPI.getAll({ space: spaceId });
-      setIssues(freshIssues);
-    } catch (err) {
-      console.error("Failed to delete attachment:", err);
-    }
+    window.showConfirm(
+      "Are you sure you want to delete this attachment?",
+      async () => {
+        try {
+          await attachmentAPI.delete(attachmentId);
+          const updatedIssue = await issueAPI.getOne(selectedIssue.issue_no);
+          setSelectedIssue(updatedIssue);
+          const freshIssues = await issueAPI.getAll({ space: spaceId });
+          setIssues(freshIssues);
+        } catch (err) {
+          console.error("Failed to delete attachment:", err);
+        }
+      },
+      "Delete Attachment"
+    );
   };
 
   const handleAddComment = async (e) => {

@@ -117,18 +117,23 @@ export default function SpacesList({ currentUser }) {
   };
 
   const handleDeleteSpace = async (spaceId) => {
-    if (!window.confirm('Are you sure you want to delete this documentation Space and all its pages?')) return;
-    try {
-      await spaceAPI.delete(spaceId);
-      setSpaces(spaces.filter(s => s.id !== spaceId));
-      if (selectedSpace?.id === spaceId) {
-        setSelectedSpace(null);
-        setPages([]);
-        setSelectedPage(null);
-      }
-    } catch (err) {
-      alert('Failed to delete Space.');
-    }
+    window.showConfirm(
+      'Are you sure you want to delete this documentation Space and all its pages?',
+      async () => {
+        try {
+          await spaceAPI.delete(spaceId);
+          setSpaces(spaces.filter(s => s.id !== spaceId));
+          if (selectedSpace?.id === spaceId) {
+            setSelectedSpace(null);
+            setPages([]);
+            setSelectedPage(null);
+          }
+        } catch (err) {
+          alert('Failed to delete Space.');
+        }
+      },
+      'Delete Space'
+    );
   };
 
   const handleUpdateSpace = async (e) => {
@@ -201,21 +206,26 @@ export default function SpacesList({ currentUser }) {
   };
 
   const handleDeletePage = async (pageId) => {
-    if (!window.confirm('Delete this page permanently?')) return;
-    try {
-      await pageAPI.delete(pageId);
-      const remaining = pages.filter(p => p.id !== pageId);
-      setPages(remaining);
-      if (selectedPage?.id === pageId) {
-        if (remaining.length > 0) {
-          handleSelectPage(remaining[0]);
-        } else {
-          setSelectedPage(null);
+    window.showConfirm(
+      'Delete this page permanently?',
+      async () => {
+        try {
+          await pageAPI.delete(pageId);
+          const remaining = pages.filter(p => p.id !== pageId);
+          setPages(remaining);
+          if (selectedPage?.id === pageId) {
+            if (remaining.length > 0) {
+              handleSelectPage(remaining[0]);
+            } else {
+              setSelectedPage(null);
+            }
+          }
+        } catch (err) {
+          alert('Failed to delete page.');
         }
-      }
-    } catch (err) {
-      alert('Failed to delete page.');
-    }
+      },
+      'Delete Page'
+    );
   };
 
   if (loading) {

@@ -10,6 +10,7 @@ export default function Login({ onLoginSuccess }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -74,7 +75,7 @@ export default function Login({ onLoginSuccess }) {
     setLoading(true);
     try {
       if (isSignUp) {
-        const data = await authAPI.register(username, email, password);
+        const data = await authAPI.register(username, email, password, isAdmin);
         onLoginSuccess(data.user);
       } else {
         const data = await authAPI.login(username, password);
@@ -107,6 +108,7 @@ export default function Login({ onLoginSuccess }) {
     setEmail('');
     setPassword('');
     setShowPassword(false);
+    setIsAdmin(false);
   };
 
   return (
@@ -197,6 +199,29 @@ export default function Login({ onLoginSuccess }) {
               </button>
             </div>
           </div>
+
+          {isSignUp && (
+            <div>
+              <label className="block text-xs font-semibold text-[#71717a] uppercase tracking-wider mb-2">
+                Workspace Role *
+              </label>
+              <div className="relative">
+                <select
+                  value={isAdmin ? 'admin' : 'member'}
+                  onChange={(e) => setIsAdmin(e.target.value === 'admin')}
+                  className="w-full px-3 py-2.5 bg-[#131316] border border-[#202024] rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors appearance-none cursor-pointer"
+                >
+                  <option value="member">Workspace Member (Developer)</option>
+                  <option value="admin">Workspace Admin (Project Lead)</option>
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+                  <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                    <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
+                  </svg>
+                </div>
+              </div>
+            </div>
+          )}
 
           <button
             type="submit"
