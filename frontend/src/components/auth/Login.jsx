@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { authAPI } from '../api/api';
+import { authAPI } from '../../api/api';
 import { KeyRound, User, Mail, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react';
 
 export default function Login({ onLoginSuccess }) {
@@ -127,7 +127,7 @@ export default function Login({ onLoginSuccess }) {
         </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-red-950/20 border border-red-900/50 text-red-400 text-xs rounded-xl flex items-start space-x-2">
+          <div className="mb-6 p-4 bg-red-955/20 border border-red-900/50 text-red-400 text-xs rounded-xl flex items-start space-x-2">
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
             <span>{error}</span>
           </div>

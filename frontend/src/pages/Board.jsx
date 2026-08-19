@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { projectAPI, issueAPI, commentAPI, authAPI, spaceAPI, pageAPI, sprintAPI, issueLinkAPI } from '../api/api';
 import { Plus, X, Loader2, ArrowLeft, Search, MessageSquare, Trash2, Calendar, User, Users, FolderKanban, Save, FileText, Link2 } from 'lucide-react';
-import Loader from './Loader';
+import Loader from '../components/Loader';
 
 const EpicIcon = ({ className = "w-4 h-4" }) => (
   <svg 
@@ -1144,9 +1144,9 @@ export default function Board({ spaceId, onBack, currentUser, initialSelectedIss
             const isPlanning = spr.status === 'PL';
 
             return (
-              <div key={spr.id} className="bg-[#0c0c0e] border border-[#202024] rounded-xl overflow-hidden shadow-sm">
+              <div key={spr.id} className="glass-card overflow-hidden">
                 {/* Sprint Header */}
-                <div className="px-5 py-4 border-b border-[#202024] flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0 bg-[#131316]/55">
+                <div className="px-5 py-4 border-b border-[#202024]/50 flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0 bg-[#131316]/30">
                   <div className="flex items-center space-x-3">
                     <span className="w-7 h-7 rounded bg-indigo-950/30 text-indigo-400 border border-indigo-900/30 flex items-center justify-center font-bold text-xs">
                       SP
@@ -1705,10 +1705,10 @@ export default function Board({ spaceId, onBack, currentUser, initialSelectedIss
                   key={column.status}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={(e) => handleDrop(e, column.status)}
-                  className="border border-[#202024] rounded-xl bg-[#0d0d0f] shadow-sm flex flex-col h-[600px] min-h-[300px] transition-colors"
+                  className="border border-[#202024]/50 rounded-2xl bg-[#131316]/30 backdrop-blur-xs flex flex-col h-[600px] min-h-[300px] transition-colors"
                 >
                   {/* Column Header */}
-                  <div className="p-4 border-b border-[#202024] flex items-center justify-between bg-[#131316] rounded-t-xl">
+                  <div className="p-4 border-b border-[#202024]/50 flex items-center justify-between bg-[#131316]/40 rounded-t-2xl">
                     <h3 className="font-bold text-[#e4e4e7] text-sm">{column.title}</h3>
                     <span className="px-2 py-0.5 bg-[#1c1c1f] text-[#a1a1aa] border border-[#282830] text-xs font-semibold rounded-full">
                       {colIssues.length}
@@ -1716,9 +1716,9 @@ export default function Board({ spaceId, onBack, currentUser, initialSelectedIss
                   </div>
 
                   {/* Cards List */}
-                  <div className="p-3 space-y-3 overflow-y-auto flex-1 bg-[#09090b]">
+                  <div className="p-3 space-y-3 overflow-y-auto flex-1 bg-transparent">
                     {colIssues.length === 0 ? (
-                      <div className="h-24 border border-dashed border-[#202024] hover:border-[#2b2b30] rounded-lg flex items-center justify-center text-xs text-[#52525b]">
+                      <div className="h-24 border border-dashed border-[#202024]/50 hover:border-[#2b2b30] rounded-lg flex items-center justify-center text-xs text-[#52525b]">
                         Drag issues here
                       </div>
                     ) : (
@@ -1728,7 +1728,7 @@ export default function Board({ spaceId, onBack, currentUser, initialSelectedIss
                           draggable
                           onDragStart={(e) => handleDragStart(e, issue)}
                           onClick={() => setSelectedIssue(issue)}
-                          className="bg-[#131316] border border-[#202024] rounded-xl p-4 shadow-sm hover:border-[#2e2e36] cursor-pointer transition-all space-y-3"
+                          className="glass-card p-4 flex flex-col justify-between cursor-pointer group"
                         >
                           <div className="flex items-center justify-between">
                             <span className={`px-2 py-0.5 text-[9px] font-bold rounded ${getTypeStyle(issue.type)}`}>
@@ -1798,7 +1798,7 @@ export default function Board({ spaceId, onBack, currentUser, initialSelectedIss
       {/* CREATE ISSUE MODAL */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
-          <div className="w-full max-w-xl bg-[#0d0d0f] rounded-xl shadow-lg border border-[#202024] overflow-hidden animate-slideUp text-[#f3f4f6]">
+          <div className="glass-modal w-full max-w-xl overflow-hidden text-[#f3f4f6]">
             <div className="flex items-center justify-between px-6 py-4 border-b border-[#202024]">
               <h3 className="text-lg font-bold text-white">Create New Issue</h3>
               <button onClick={() => setIsCreateModalOpen(false)} className="text-gray-500 hover:text-gray-300 focus:outline-none cursor-pointer">
@@ -2018,7 +2018,7 @@ export default function Board({ spaceId, onBack, currentUser, initialSelectedIss
       {/* DETAIL MODAL (INLINE VIEWS + COMMENTS) */}
       {selectedIssue && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
-          <div className="w-full max-w-4xl bg-[#0d0d0f] rounded-xl shadow-2xl border border-[#202024] overflow-hidden flex flex-col md:flex-row h-[90vh] md:h-[80vh] animate-slideUp text-[#f3f4f6]">
+          <div className="glass-modal w-full max-w-4xl overflow-hidden flex flex-col md:flex-row h-[90vh] md:h-[80vh] text-[#f3f4f6]">
             {/* Left Main Panel */}
             <div className="flex-1 p-6 overflow-y-auto space-y-6 border-b md:border-b-0 md:border-r border-[#202024]">
               <div className="flex items-center justify-between">
@@ -2962,7 +2962,7 @@ export default function Board({ spaceId, onBack, currentUser, initialSelectedIss
       {/* CREATE SPRINT MODAL */}
       {isSprintModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
-          <div className="w-full max-w-md bg-[#0d0d0f] rounded-xl shadow-lg border border-[#202024] overflow-hidden animate-slideUp text-[#f3f4f6]">
+          <div className="glass-modal w-full max-w-md overflow-hidden text-[#f3f4f6]">
             <div className="flex items-center justify-between px-6 py-4 border-b border-[#202024]">
               <h3 className="text-lg font-bold text-white">Create Sprint</h3>
               <button onClick={() => setIsSprintModalOpen(false)} className="text-gray-500 hover:text-gray-300 focus:outline-none cursor-pointer">
@@ -3046,7 +3046,7 @@ export default function Board({ spaceId, onBack, currentUser, initialSelectedIss
       {/* COMPLETE SPRINT MODAL */}
       {completeSprintModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
-          <div className="w-full max-w-md bg-[#0d0d0f] rounded-xl shadow-lg border border-[#202024] overflow-hidden animate-slideUp text-[#f3f4f6]">
+          <div className="glass-modal w-full max-w-md overflow-hidden text-[#f3f4f6]">
             <div className="flex items-center justify-between px-6 py-4 border-b border-[#202024]">
               <h3 className="text-lg font-bold text-white">Complete Sprint: {sprintToComplete?.name}</h3>
               <button onClick={() => setCompleteSprintModalOpen(false)} className="text-gray-500 hover:text-gray-300 focus:outline-none cursor-pointer">

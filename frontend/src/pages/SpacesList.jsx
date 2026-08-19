@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { spaceAPI, pageAPI, projectAPI } from '../api/api';
 import { BookOpen, FolderKanban, Plus, X, Loader2, Save, Trash2, Calendar, FileText, Search, MoreVertical } from 'lucide-react';
-import Loader from './Loader';
+import Loader from '../components/Loader';
 
 export default function SpacesList({ currentUser }) {
   const [spaces, setSpaces] = useState([]);
@@ -238,9 +238,9 @@ export default function SpacesList({ currentUser }) {
   );
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] bg-[#09090b] border border-[#202024] rounded-2xl shadow-xl overflow-hidden text-[#f3f4f6] animate-fadeIn">
+    <div className="flex h-[calc(100vh-8rem)] glass-card overflow-hidden text-[#f3f4f6] animate-fadeIn">
       {/* 1. SPACES DIRECTORY (Left Sidebar) */}
-      <aside className="w-64 bg-[#0c0c0e] border-r border-[#202024] flex flex-col justify-between shrink-0">
+      <aside className="w-64 bg-transparent border-r border-[#202024]/50 flex flex-col justify-between shrink-0">
         <div className="p-4 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-bold text-[#71717a] uppercase tracking-wider">Docs & Spaces</h3>
@@ -335,7 +335,7 @@ export default function SpacesList({ currentUser }) {
 
       {/* 2. PAGES LIST PANEL (Middle Panel) */}
       {selectedSpace ? (
-        <div className="w-72 bg-[#09090b] border-r border-[#202024] flex flex-col justify-between shrink-0">
+        <div className="w-72 bg-transparent border-r border-[#202024]/50 flex flex-col justify-between shrink-0">
           <div className="p-4 space-y-4">
             {/* Header info */}
             <div>
@@ -406,7 +406,7 @@ export default function SpacesList({ currentUser }) {
         </div>
       ) : (
         /* Empty Space Placeholder */
-        <div className="flex-1 flex flex-col items-center justify-center p-8 bg-[#09090b]">
+        <div className="flex-1 flex flex-col items-center justify-center p-8 bg-transparent">
           <BookOpen className="w-16 h-16 text-[#202024] mb-4" />
           <h3 className="text-lg font-bold text-white">Select a Documentation Space</h3>
           <p className="text-xs text-[#71717a] mt-1">Choose a documentation space from the left sidebar or create a new one.</p>
@@ -416,9 +416,9 @@ export default function SpacesList({ currentUser }) {
       {/* 3. EDITOR PANEL (Right Main Panel) */}
       {selectedSpace && (
         selectedPage ? (
-          <div className="flex-1 bg-[#09090b] flex flex-col overflow-hidden">
+          <div className="flex-1 bg-transparent flex flex-col overflow-hidden">
             {/* Toolbar */}
-            <div className="h-14 border-b border-[#202024] px-6 flex items-center justify-between shrink-0 bg-[#0d0d0f]">
+            <div className="h-14 border-b border-[#202024]/50 px-6 flex items-center justify-between shrink-0 bg-[#131316]/20">
               <div className="flex items-center space-x-3 text-xs text-[#71717a]">
                 <span>Author: <span className="font-semibold text-[#a1a1aa]">{selectedPage.created_by_details?.username}</span></span>
                 <span className="w-1.5 h-1.5 rounded-full bg-[#202024]"></span>
@@ -483,7 +483,7 @@ export default function SpacesList({ currentUser }) {
       {/* CREATE SPACE MODAL */}
       {isSpaceModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
-          <div className="w-full max-w-md bg-[#0d0d0f] rounded-xl shadow-lg border border-[#202024] overflow-hidden animate-slideUp text-[#f3f4f6]">
+          <div className="glass-modal w-full max-w-md overflow-hidden text-[#f3f4f6]">
             <div className="flex items-center justify-between px-6 py-4 border-b border-[#202024]">
               <h3 className="text-lg font-bold text-white">Create Documentation Space</h3>
               <button
@@ -572,7 +572,7 @@ export default function SpacesList({ currentUser }) {
       {/* EDIT SPACE MODAL */}
       {isEditModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
-          <div className="w-full max-w-md bg-[#0d0d0f] rounded-xl shadow-lg border border-[#202024] overflow-hidden animate-slideUp text-[#f3f4f6]">
+          <div className="glass-modal w-full max-w-md overflow-hidden text-[#f3f4f6]">
             <div className="flex items-center justify-between px-6 py-4 border-b border-[#202024]">
               <h3 className="text-lg font-bold text-white">Edit Space Details</h3>
               <button

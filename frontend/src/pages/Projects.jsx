@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { projectAPI, authAPI, invitationAPI, joinRequestAPI } from '../api/api';
 import { Plus, X, FolderKanban, Briefcase, Loader2, Users, Send, Check, AlertCircle, Copy } from 'lucide-react';
-import Loader from './Loader';
+import Loader from '../components/Loader';
 
 export default function Projects({ onNavigateToProject, currentUser }) {
   const [projects, setProjects] = useState([]);
@@ -247,7 +247,7 @@ export default function Projects({ onNavigateToProject, currentUser }) {
               <div
                 key={project.id}
                 onClick={() => onNavigateToProject(project.id)}
-                className="bg-[#131316] border border-[#202024] rounded-xl p-6 shadow-sm hover:border-[#2e2e36] transition-all flex flex-col justify-between cursor-pointer group"
+                className="glass-card p-6 flex flex-col justify-between cursor-pointer group"
               >
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
@@ -425,7 +425,7 @@ export default function Projects({ onNavigateToProject, currentUser }) {
       {activeTab === 'invites' && currentUser.is_superuser && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Invite Form */}
-          <div className="lg:col-span-1 bg-[#131316] border border-[#202024] rounded-xl p-6 shadow-sm h-fit space-y-4">
+          <div className="lg:col-span-1 glass-card p-6 h-fit space-y-4">
             <h3 className="font-bold text-white text-sm">Invite New Developer</h3>
             {inviteError && (
               <div className="p-3 bg-red-950/20 border border-red-900/50 text-red-400 text-xs rounded-lg">
@@ -492,7 +492,7 @@ export default function Projects({ onNavigateToProject, currentUser }) {
           </div>
 
           {/* Invites List */}
-          <div className="lg:col-span-2 bg-[#131316] border border-[#202024] rounded-xl shadow-sm overflow-hidden">
+          <div className="lg:col-span-2 glass-card overflow-hidden">
             <div className="px-6 py-4 border-b border-[#202024] bg-[#18181c]">
               <h3 className="font-bold text-white text-sm">Active Workspace Invitations</h3>
             </div>
@@ -534,7 +534,7 @@ export default function Projects({ onNavigateToProject, currentUser }) {
 
       {/* USER RECEIVED PENDING INVITATIONS TAB */}
       {activeTab === 'invites' && !currentUser.is_superuser && (
-        <div className="max-w-3xl mx-auto bg-[#131316] border border-[#202024] rounded-xl shadow-sm overflow-hidden">
+        <div className="max-w-3xl mx-auto glass-card overflow-hidden">
           <div className="px-6 py-4 border-b border-[#202024] bg-[#18181c]">
             <h3 className="font-bold text-white text-sm">My Project & Workspace Invitations</h3>
           </div>
@@ -576,7 +576,7 @@ export default function Projects({ onNavigateToProject, currentUser }) {
       {/* Project Creation Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-fadeIn">
-          <div className="w-full max-w-lg bg-[#0d0d0f] rounded-xl shadow-lg border border-[#202024] overflow-hidden animate-slideUp text-[#f3f4f6]">
+          <div className="glass-modal w-full max-w-lg overflow-hidden text-[#f3f4f6]">
             <div className="flex items-center justify-between px-6 py-4 border-b border-[#202024]">
               <h3 className="text-lg font-bold text-white">Create New Project</h3>
               <button
