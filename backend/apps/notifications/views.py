@@ -7,7 +7,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from .models import FCMDevice, Notification
 from issues.models import Issue
-from projects.models import Sprint, Project, Space
+from projects.models import Project
+from spaces.models import Sprint, Space
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])

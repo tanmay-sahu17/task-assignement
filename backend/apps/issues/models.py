@@ -2,7 +2,8 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.urls import reverse
 from django.contrib.auth import get_user_model
-from projects.models import Project, Space, Sprint
+from projects.models import Project
+from spaces.models import Space, Sprint
 
 User = get_user_model()
 

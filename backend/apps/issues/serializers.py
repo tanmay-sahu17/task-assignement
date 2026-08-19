@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import Issue, IssueLink, IssueAttachment
-from projects.serializers import UserSerializer, ProjectSerializer, SpaceSerializer, SprintSerializer
+from projects.serializers import UserSerializer, ProjectSerializer
+from spaces.serializers import SpaceSerializer, SprintSerializer
 
 class EpicDetailsSerializer(serializers.ModelSerializer):
     class Meta:
