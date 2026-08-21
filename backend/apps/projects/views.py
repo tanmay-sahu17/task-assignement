@@ -20,6 +20,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        if user.is_superuser:
+            return Project.objects.all().order_by('-created_at')
         return Project.objects.filter(Q(lead=user) | Q(members=user)).distinct().order_by('-created_at')
 
     def create(self, request, *args, **kwargs):

@@ -15,6 +15,8 @@ class SpaceViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        if user.is_superuser:
+            return Space.objects.all().order_by('name')
         return Space.objects.filter(
             Q(project__isnull=True) | Q(project__members=user) | Q(project__lead=user)
         ).distinct().order_by('name')
@@ -84,6 +86,8 @@ class PageViewSet(viewsets.ModelViewSet):
         if space_id:
             queryset = queryset.filter(space_id=space_id)
             
+        if user.is_superuser:
+            return queryset.distinct().order_by('-updated_at')
         return queryset.filter(
             Q(space__project__isnull=True) | Q(space__project__members=user) | Q(space__project__lead=user)
         ).distinct().order_by('-updated_at')
@@ -110,6 +114,8 @@ class SprintViewSet(viewsets.ModelViewSet):
         if space_id:
             queryset = queryset.filter(space_id=space_id)
 
+        if user.is_superuser:
+            return queryset.distinct().order_by('order', 'created_at')
         return queryset.filter(
             Q(space__project__isnull=True) | Q(space__project__members=user) | Q(space__project__lead=user)
         ).distinct().order_by('order', 'created_at')
