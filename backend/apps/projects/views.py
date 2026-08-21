@@ -29,6 +29,10 @@ class ProjectViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("Only Workspace Admins can create projects.")
         return super().create(request, *args, **kwargs)
 
+    def perform_create(self, serializer):
+        project = serializer.save()
+        project.members.add(self.request.user)
+
     @action(detail=False, methods=['get'])
     def joinable(self, request):
         user = request.user
