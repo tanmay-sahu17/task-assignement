@@ -12,10 +12,10 @@ export default function useNotifications() {
   const fetchNotifications = useCallback(async () => {
     if (!token) return;
     try {
-      const data = await notificationAPI.getAll();
-      setNotifications(data);
-      const unread = data.filter(n => !n.is_read).length;
-      setUnreadCount(unread);
+      const data = await notificationAPI.getNotifications();
+      const list = data.notifications || [];
+      setNotifications(list);
+      setUnreadCount(data.unread_count || 0);
     } catch (err) {
       console.error("Failed to fetch notifications:", err);
     }
